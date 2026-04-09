@@ -984,7 +984,7 @@ export default function AddJobPage() {
       return acc;
     }, 0);
     
-    const usableStock = Math.max(0, (Number(roll.stock) || 0) - 10);
+    const usableStock = Math.max(0, Number(roll.stock) || 0);
     return usableStock - usedInCurrentJob;
   })();
   const { data: vehicleTypes = [] } = useQuery<any[]>({
@@ -1497,7 +1497,7 @@ export default function AddJobPage() {
                         <SelectValue placeholder="Select Roll" />
                       </SelectTrigger>
                       <SelectContent>
-                        {currentPPF?.rolls?.filter((roll: any) => (roll.stock || 0) > 10).map((roll: any) => (
+                        {currentPPF?.rolls?.filter((roll: any) => (roll.stock || 0) > 0).map((roll: any) => (
                           <SelectItem key={roll._id || roll.id} value={(roll._id || roll.id)!}>
                             {roll.name} ({(() => {
                               const used = form.watch("ppfs")
@@ -1508,7 +1508,7 @@ export default function AddJobPage() {
                                   const match = p.name.match(regex);
                                   return sum + (match ? parseFloat(match[1]) : 0);
                                 }, 0);
-                              const usable = Math.max(0, (roll.stock || 0) - 10);
+                              const usable = Math.max(0, roll.stock || 0);
                               return usable - used;
                             })()} sqft)
                           </SelectItem>
@@ -1543,10 +1543,9 @@ export default function AddJobPage() {
                     <label className="text-xs font-bold text-muted-foreground uppercase">Available Stock (sqft)</label>
                     <div className="h-11 flex items-center px-3 border rounded-md bg-slate-50 font-medium text-slate-700">
                       {selectedPPF ? (() => {
-                        // Only count rolls with stock > 10, and subtract 10 sqft buffer from each
                         const totalStock = currentPPF?.rolls
-                          ?.filter((r: any) => (r.stock || 0) > 10)
-                          .reduce((acc: number, r: any) => acc + Math.max(0, (r.stock || 0) - 10), 0) || 0;
+                          ?.filter((r: any) => (r.stock || 0) > 0)
+                          .reduce((acc: number, r: any) => acc + (r.stock || 0), 0) || 0;
                         const usedInCurrentJob = ppfFields.reduce((acc, field: any) => {
                           const isSamePPF = field.ppfId === selectedPPF;
                           if (!isSamePPF) return acc;
