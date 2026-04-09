@@ -110,6 +110,83 @@ function HsnCombobox({ value, onChange, placeholder }: { value: string; onChange
   );
 }
 
+function RollCombobox({
+  rolls,
+  value,
+  onChange,
+  disabled,
+}: {
+  rolls: { id: string; name: string; availableStock: number }[];
+  value: string;
+  onChange: (v: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const filtered = rolls.filter(r =>
+    !search || r.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const selectedRoll = rolls.find(r => r.id === value);
+
+  return (
+    <div ref={wrapRef} className="relative">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => { if (!disabled) setOpen(prev => !prev); }}
+        className="flex h-11 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <span className={selectedRoll ? "text-foreground" : "text-muted-foreground"}>
+          {selectedRoll ? `${selectedRoll.name} (${selectedRoll.availableStock} sqft)` : "Select Roll"}
+        </span>
+        <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full mt-1 z-[9999] bg-white border border-border rounded-lg shadow-2xl w-full min-w-[220px]">
+          <div className="p-2 border-b border-border/40">
+            <Input
+              autoFocus
+              className="h-8 text-sm"
+              placeholder="Search rolls..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="overflow-y-auto" style={{ maxHeight: "288px" }}>
+            {filtered.length === 0 ? (
+              <div className="px-3 py-4 text-sm text-muted-foreground text-center">No rolls found</div>
+            ) : (
+              filtered.map(roll => (
+                <button
+                  key={roll.id}
+                  type="button"
+                  className={`w-full text-left px-3 py-2.5 text-sm hover:bg-muted/60 transition-colors border-b border-border/20 last:border-0 ${value === roll.id ? "bg-red-50 text-red-700 font-medium" : ""}`}
+                  onMouseDown={e => { e.preventDefault(); onChange(roll.id); setOpen(false); setSearch(""); }}
+                >
+                  <span className="font-medium">{roll.name}</span>
+                  <span className="text-muted-foreground ml-1.5 text-xs">({roll.availableStock} sqft)</span>
+                </button>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
   const jobCardSchema = z.object({
     customerName: z.string().min(1, "Customer name is required").transform(val => 
       val.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')
@@ -1576,29 +1653,28 @@ export default function AddJobPage() {
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
                     <label className="text-xs font-bold text-muted-foreground uppercase">Select Roll</label>
-                    <Select value={selectedPPFRoll} onValueChange={setSelectedPPFRoll} disabled={!selectedPPF}>
-                      <SelectTrigger className="h-11">
-                        <SelectValue placeholder="Select Roll" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {currentPPF?.rolls?.filter((roll: any) => (roll.stock || 0) > 10).map((roll: any) => (
-                          <SelectItem key={roll._id || roll.id} value={(roll._id || roll.id)!}>
-                            {roll.name} ({(() => {
-                              const used = form.watch("ppfs")
-                                .filter((p: any) => p.ppfId === selectedPPF)
-                                .reduce((sum: number, p: any) => {
-                                  const rollNameEscaped = roll.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                                  const regex = new RegExp(`Quantity: (\\d+(?:\\.\\d+)?)sqft \\(from ${rollNameEscaped}\\)`);
-                                  const match = p.name.match(regex);
-                                  return sum + (match ? parseFloat(match[1]) : 0);
-                                }, 0);
-                              const usable = Math.max(0, roll.stock || 0);
-                              return usable - used;
-                            })()} sqft)
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <RollCombobox
+                      disabled={!selectedPPF}
+                      value={selectedPPFRoll}
+                      onChange={setSelectedPPFRoll}
+                      rolls={(currentPPF?.rolls ?? [])
+                        .filter((roll: any) => (roll.stock || 0) > 10)
+                        .map((roll: any) => {
+                          const used = form.watch("ppfs")
+                            .filter((p: any) => p.ppfId === selectedPPF)
+                            .reduce((sum: number, p: any) => {
+                              const rollNameEscaped = roll.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                              const regex = new RegExp(`Quantity: (\\d+(?:\\.\\d+)?)sqft \\(from ${rollNameEscaped}\\)`);
+                              const match = p.name.match(regex);
+                              return sum + (match ? parseFloat(match[1]) : 0);
+                            }, 0);
+                          return {
+                            id: (roll._id || roll.id) as string,
+                            name: roll.name as string,
+                            availableStock: Math.max(0, (roll.stock || 0) - used),
+                          };
+                        })}
+                    />
                   </div>
                   <div className="md:col-span-2 space-y-1.5">
                     <label className="text-xs font-bold text-muted-foreground uppercase">Sqft Used</label>
