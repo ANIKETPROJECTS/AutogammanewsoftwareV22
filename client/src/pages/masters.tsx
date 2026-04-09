@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Wrench, Shield, Package, Car, X, Edit2, LayoutGrid, ChevronDown, ChevronUp, Archive, ArrowLeft, History, ArrowUpDown, ArrowUp, ArrowDown, Filter, RotateCcw, Layers } from "lucide-react";
+import { Plus, Trash2, Wrench, Shield, Package, Car, X, Edit2, LayoutGrid, ChevronDown, ChevronUp, Archive, ArrowLeft, History, ArrowUpDown, ArrowUp, ArrowDown, Filter, RotateCcw, Layers, Search, Check } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@shared/routes";
@@ -949,6 +949,10 @@ function ManageRollsForm({ ppf, onClose }: { ppf: PPFMaster; onClose: () => void
   const [activeRolls, setActiveRolls] = useState<any[]>(allRolls.filter((r: any) => (r.stock || 0) > 10));
   const [newRollName, setNewRollName] = useState("");
   const [newRollStock, setNewRollStock] = useState("");
+  const [rollSearch, setRollSearch] = useState("");
+  const [editingRollIndex, setEditingRollIndex] = useState<number | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editStock, setEditStock] = useState("");
 
   const ppfMutation = useMutation({
     mutationFn: (data: any) => apiRequest("PATCH", `/api/masters/ppf/${ppf.id}`, data),
@@ -961,27 +965,39 @@ function ManageRollsForm({ ppf, onClose }: { ppf: PPFMaster; onClose: () => void
 
   const addRoll = () => {
     if (!newRollName.trim()) return;
-    setActiveRolls([...activeRolls, { name: newRollName.trim(), stock: parseInt(newRollStock) || 0 }]);
+    setActiveRolls([{ name: newRollName.trim(), stock: parseInt(newRollStock) || 0 }, ...activeRolls]);
     setNewRollName("");
     setNewRollStock("");
   };
 
-  const updateRoll = (index: number, field: string, value: any) => {
+  const startEdit = (index: number) => {
+    setEditingRollIndex(index);
+    setEditName(activeRolls[index].name);
+    setEditStock(String(activeRolls[index].stock));
+  };
+
+  const confirmEdit = (index: number) => {
     const updated = [...activeRolls];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], name: editName, stock: parseInt(editStock) || 0 };
     setActiveRolls(updated);
+    setEditingRollIndex(null);
   };
 
   const removeRoll = (index: number) => {
     const updated = [...activeRolls];
     updated.splice(index, 1);
     setActiveRolls(updated);
+    if (editingRollIndex === index) setEditingRollIndex(null);
   };
 
   const handleSave = () => {
     const mergedRolls = [...activeRolls, ...usedRolls];
     ppfMutation.mutate({ name: ppf.name, pricingByVehicleType: ppf.pricingByVehicleType, rolls: mergedRolls });
   };
+
+  const filteredRolls = activeRolls
+    .map((roll, index) => ({ roll, index }))
+    .filter(({ roll }) => !rollSearch.trim() || roll.name.toLowerCase().includes(rollSearch.trim().toLowerCase()));
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -1029,38 +1045,73 @@ function ManageRollsForm({ ppf, onClose }: { ppf: PPFMaster; onClose: () => void
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase text-muted-foreground px-1">Existing Rolls ({activeRolls.length})</p>
-            {activeRolls.map((roll, index) => (
-              <div key={index} className="flex gap-2 items-center border rounded-lg px-3 py-2 bg-background">
-                <div className="flex-1">
-                  <Input
-                    placeholder="Roll name"
-                    value={roll.name}
-                    onChange={(e) => updateRoll(index, "name", e.target.value)}
-                    className="h-8 text-sm"
-                  />
+            <div className="flex items-center justify-between px-1">
+              <p className="text-xs font-semibold uppercase text-muted-foreground">Existing Rolls ({activeRolls.length})</p>
+            </div>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Search rolls..."
+                value={rollSearch}
+                onChange={(e) => setRollSearch(e.target.value)}
+                className="h-8 pl-8 text-sm"
+              />
+            </div>
+            {filteredRolls.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-4">No rolls match your search.</p>
+            ) : (
+              filteredRolls.map(({ roll, index }) => (
+                <div key={index} className="border rounded-lg px-3 py-2 bg-background">
+                  {editingRollIndex === index ? (
+                    <div className="flex gap-2 items-center">
+                      <div className="flex-1">
+                        <Input
+                          placeholder="Roll name"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="h-8 text-sm"
+                          autoFocus
+                        />
+                      </div>
+                      <div className="w-24">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          pattern="[0-9]*"
+                          placeholder="0"
+                          value={editStock}
+                          onChange={(e) => {
+                            if (e.target.value === "" || /^[0-9]+$/.test(e.target.value)) {
+                              setEditStock(e.target.value);
+                            }
+                          }}
+                          className="h-8 text-sm text-right"
+                        />
+                      </div>
+                      <span className="text-xs text-muted-foreground shrink-0">sqft</span>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 text-green-600 hover:text-green-700" onClick={() => confirmEdit(index)}>
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => setEditingRollIndex(null)}>
+                        <X className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="flex-1 text-sm font-medium">{roll.name}</span>
+                      <span className="text-sm font-bold">{roll.stock}</span>
+                      <span className="text-xs text-muted-foreground shrink-0">sqft</span>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => startEdit(index)}>
+                        <Edit2 className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeRoll(index)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                <div className="w-24">
-                  <Input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="0"
-                    value={roll.stock}
-                    onChange={(e) => {
-                      if (e.target.value === "" || /^[0-9]+$/.test(e.target.value)) {
-                        updateRoll(index, "stock", e.target.value);
-                      }
-                    }}
-                    className="h-8 text-sm text-right"
-                  />
-                </div>
-                <span className="text-xs text-muted-foreground shrink-0">sqft</span>
-                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeRoll(index)}>
-                  <X className="h-3.5 w-3.5 text-destructive" />
-                </Button>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         )}
       </div>
