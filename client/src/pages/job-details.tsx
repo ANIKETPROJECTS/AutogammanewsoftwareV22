@@ -135,6 +135,27 @@ export default function JobDetailsPage() {
         const totalBeforeGst = subtotal + businessLabor - businessDiscount;
         const gstAmount = (totalBeforeGst * gstPercentage) / 100;
 
+        const invoiceTotal = totalBeforeGst + gstAmount;
+
+        // For split invoices (multiple businesses), each invoice should only show
+        // a payment equal to its own total, not the combined job total.
+        let invoicePayments: { amount: number; method: string; date: string }[] = [];
+        if (job.isPaid && job.payments && job.payments.length > 0) {
+          if (businesses.length === 1) {
+            // Single business — copy all payments as-is
+            invoicePayments = job.payments;
+          } else {
+            // Split between multiple businesses — assign each invoice a payment
+            // equal to its own total using the method/date of the first job payment
+            const firstPayment = job.payments[0];
+            invoicePayments = [{
+              amount: invoiceTotal,
+              method: firstPayment.method,
+              date: firstPayment.date
+            }];
+          }
+        }
+
         const invoiceData = {
           jobCardId: job.id,
           business,
@@ -160,10 +181,10 @@ export default function JobDetailsPage() {
           laborCharge: businessLabor,
           gstPercentage,
           gstAmount,
-          totalAmount: totalBeforeGst + gstAmount,
+          totalAmount: invoiceTotal,
           date: job.date,
           isPaid: job.isPaid,
-          payments: job.isPaid ? job.payments : []
+          payments: invoicePayments
         };
 
         await apiRequest("POST", "/api/invoices", invoiceData);
