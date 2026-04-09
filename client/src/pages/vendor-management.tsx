@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Plus, Search, Building2, Phone, Mail, MapPin, Edit2, Trash2,
   ShoppingCart, Package, CalendarDays, ChevronDown, ChevronUp, X,
-  ArrowLeft, LayoutGrid, List, ArrowUpDown, SlidersHorizontal,
+  ArrowLeft, LayoutGrid, List, ArrowUpDown,
 } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -665,55 +665,83 @@ function PurchasePanel({ vendor, purchase, onBack }: PurchasePanelProps) {
   );
 }
 
-// ─── Vendor Card ──────────────────────────────────────────────────────────────
-interface VendorCardProps {
+// ─── Vendor List Row ──────────────────────────────────────────────────────────
+interface VendorListRowProps {
   vendor: Vendor;
   purchases: VendorPurchase[];
-  onEdit: () => void;
-  onDelete: () => void;
-  onAddPurchase: () => void;
-  onEditPurchase: (p: VendorPurchase) => void;
-  listView?: boolean;
+  onEdit: (e: React.MouseEvent) => void;
+  onDelete: (e: React.MouseEvent) => void;
+  onAddPurchase: (e: React.MouseEvent) => void;
+  onClick: () => void;
 }
 
-function VendorCard({ vendor, purchases, onEdit, onDelete, onAddPurchase, onEditPurchase, listView }: VendorCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const { toast } = useToast();
+function VendorListRow({ vendor, purchases, onEdit, onDelete, onAddPurchase, onClick }: VendorListRowProps) {
   const vendorPurchases = purchases.filter(p => p.vendorId === vendor.id);
   const totalSpend = vendorPurchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+  const lastPurchase = vendorPurchases.sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime())[0];
 
-  const deletePurchaseMutation = useMutation({
-    mutationFn: (id: string) => apiRequest("DELETE", `/api/vendor-purchases/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/vendor-purchases"] });
-      toast({ title: "Purchase deleted" });
-    },
-  });
-
-  if (listView) {
-    return (
-      <div className="flex items-center gap-4 px-4 py-3 border-b border-border/40 hover:bg-muted/20 transition-colors">
-        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Building2 className="h-4 w-4 text-primary" />
+  return (
+    <tr
+      data-testid={`row-vendor-${vendor.id}`}
+      onClick={onClick}
+      className="hover:bg-muted/30 transition-colors cursor-pointer border-b border-border/40 last:border-0"
+    >
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Building2 className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <p data-testid={`text-vendor-name-${vendor.id}`} className="font-semibold text-foreground text-sm">{vendor.name}</p>
+            {vendor.category && (
+              <span className="inline-block text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary mt-0.5">{vendor.category}</span>
+            )}
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <p data-testid={`text-vendor-name-${vendor.id}`} className="font-semibold text-foreground text-sm">{vendor.name}</p>
-          {vendor.category && <span className="text-xs text-muted-foreground">{vendor.category}</span>}
+      </td>
+      <td className="px-4 py-3">
+        <div className="space-y-0.5">
+          {vendor.contactPerson && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Building2 className="h-3 w-3 flex-shrink-0" />
+              <span data-testid={`text-vendor-contact-${vendor.id}`}>{vendor.contactPerson}</span>
+            </div>
+          )}
+          {vendor.phone && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Phone className="h-3 w-3 flex-shrink-0" />
+              <span data-testid={`text-vendor-phone-${vendor.id}`}>{vendor.phone}</span>
+            </div>
+          )}
+          {vendor.email && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Mail className="h-3 w-3 flex-shrink-0" />
+              <span data-testid={`text-vendor-email-${vendor.id}`} className="truncate max-w-[160px]">{vendor.email}</span>
+            </div>
+          )}
         </div>
-        <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground min-w-[120px]">
-          {vendor.contactPerson && <><Building2 className="h-3 w-3" /><span>{vendor.contactPerson}</span></>}
+      </td>
+      <td className="px-4 py-3 hidden lg:table-cell">
+        {vendor.address ? (
+          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+            <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0" />
+            <span className="line-clamp-2 max-w-[180px]">{vendor.address}</span>
+          </div>
+        ) : <span className="text-xs text-muted-foreground/40">—</span>}
+      </td>
+      <td className="px-4 py-3 text-center">
+        <div>
+          <p data-testid={`text-vendor-purchases-${vendor.id}`} className="text-sm font-semibold text-foreground">{vendorPurchases.length}</p>
+          {lastPurchase && (
+            <p className="text-[10px] text-muted-foreground">{formatDate(lastPurchase.purchaseDate || lastPurchase.receivedDate || "")}</p>
+          )}
         </div>
-        <div className="hidden md:flex items-center gap-1 text-xs text-muted-foreground min-w-[110px]">
-          {vendor.phone && <><Phone className="h-3 w-3" /><span>{vendor.phone}</span></>}
-        </div>
-        <div className="hidden lg:flex items-center gap-1 text-xs text-muted-foreground min-w-[130px]">
-          {vendor.email && <><Mail className="h-3 w-3" /><span className="truncate max-w-[120px]">{vendor.email}</span></>}
-        </div>
-        <div className="text-right min-w-[100px]">
-          <p data-testid={`text-vendor-spend-${vendor.id}`} className="text-sm font-semibold text-primary">{formatCurrency(totalSpend)}</p>
-          <p className="text-xs text-muted-foreground">{vendorPurchases.length} purchase{vendorPurchases.length !== 1 ? "s" : ""}</p>
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
+      </td>
+      <td className="px-4 py-3 text-right">
+        <p data-testid={`text-vendor-spend-${vendor.id}`} className="text-sm font-bold text-primary">{formatCurrency(totalSpend)}</p>
+      </td>
+      <td className="px-4 py-3">
+        <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
           <Button data-testid={`button-add-purchase-${vendor.id}`} size="sm" variant="outline" onClick={onAddPurchase} className="h-7 text-xs">
             <Plus className="h-3 w-3 mr-1" /> Purchase
           </Button>
@@ -724,126 +752,221 @@ function VendorCard({ vendor, purchases, onEdit, onDelete, onAddPurchase, onEdit
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
-      </div>
-    );
-  }
+      </td>
+    </tr>
+  );
+}
+
+// ─── Vendor Detail View ───────────────────────────────────────────────────────
+interface VendorDetailViewProps {
+  vendor: Vendor;
+  purchases: VendorPurchase[];
+  onBack: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+  onAddPurchase: () => void;
+  onEditPurchase: (p: VendorPurchase) => void;
+}
+
+function VendorDetailView({ vendor, purchases, onBack, onEdit, onDelete, onAddPurchase, onEditPurchase }: VendorDetailViewProps) {
+  const { toast } = useToast();
+  const vendorPurchases = purchases
+    .filter(p => p.vendorId === vendor.id)
+    .sort((a, b) => new Date(b.purchaseDate).getTime() - new Date(a.purchaseDate).getTime());
+  const totalSpend = vendorPurchases.reduce((sum, p) => sum + (p.totalAmount || 0), 0);
+
+  const deletePurchaseMutation = useMutation({
+    mutationFn: (id: string) => apiRequest("DELETE", `/api/vendor-purchases/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vendor-purchases"] });
+      toast({ title: "Purchase deleted" });
+    },
+  });
 
   return (
-    <Card className="overflow-hidden border border-border/60">
-      <CardContent className="p-4 space-y-3">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-3">
-            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-              <Building2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h3 data-testid={`text-vendor-name-${vendor.id}`} className="font-semibold text-foreground leading-tight">{vendor.name}</h3>
-              {vendor.category && <span className="text-xs text-muted-foreground">{vendor.category}</span>}
-            </div>
-          </div>
-          <div className="flex items-center gap-1 flex-shrink-0">
-            <Button data-testid={`button-add-purchase-${vendor.id}`} size="sm" variant="outline" onClick={onAddPurchase} className="h-8 text-xs">
-              <Plus className="h-3 w-3 mr-1" /> Purchase
-            </Button>
-            <Button data-testid={`button-edit-vendor-${vendor.id}`} size="icon" variant="ghost" className="h-8 w-8" onClick={onEdit}>
-              <Edit2 className="h-3.5 w-3.5" />
-            </Button>
-            <Button data-testid={`button-delete-vendor-${vendor.id}`} size="icon" variant="ghost" className="h-8 w-8 text-destructive hover:text-destructive" onClick={onDelete}>
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          data-testid="button-back-to-vendors"
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back to Vendors
+        </button>
+      </div>
 
-        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-          {vendor.contactPerson && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Building2 className="h-3.5 w-3.5" />
-              <span data-testid={`text-vendor-contact-${vendor.id}`}>{vendor.contactPerson}</span>
-            </div>
-          )}
-          {vendor.phone && (
-            <div className="flex items-center gap-1.5 text-muted-foreground">
-              <Phone className="h-3.5 w-3.5" />
-              <span data-testid={`text-vendor-phone-${vendor.id}`}>{vendor.phone}</span>
-            </div>
-          )}
-          {vendor.email && (
-            <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
-              <Mail className="h-3.5 w-3.5" />
-              <span data-testid={`text-vendor-email-${vendor.id}`}>{vendor.email}</span>
-            </div>
-          )}
-          {vendor.address && (
-            <div className="flex items-center gap-1.5 text-muted-foreground col-span-2">
-              <MapPin className="h-3.5 w-3.5" />
-              <span data-testid={`text-vendor-address-${vendor.id}`} className="line-clamp-1">{vendor.address}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between pt-1 border-t border-border/50">
-          <div className="flex items-center gap-3 text-sm">
-            <span className="text-muted-foreground">{vendorPurchases.length} purchase{vendorPurchases.length !== 1 ? "s" : ""}</span>
-            <span data-testid={`text-vendor-spend-${vendor.id}`} className="font-semibold text-primary">{formatCurrency(totalSpend)}</span>
-          </div>
-          {vendorPurchases.length > 0 && (
-            <button
-              data-testid={`button-toggle-purchases-${vendor.id}`}
-              onClick={() => setExpanded(e => !e)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              {expanded ? "Hide" : "View"} purchases
-            </button>
-          )}
-        </div>
-
-        {expanded && vendorPurchases.length > 0 && (
-          <div className="space-y-2 pt-1">
-            {vendorPurchases.map(p => (
-              <div key={p.id} data-testid={`card-purchase-${p.id}`}
-                className="rounded-lg border border-border/60 bg-muted/30 p-3 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-sm font-medium">
-                      {p.receivedDate ? `Received: ${formatDate(p.receivedDate)}` : "Not yet received"}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm font-semibold text-primary">{formatCurrency(p.totalAmount)}</span>
-                    <Button data-testid={`button-edit-purchase-${p.id}`} size="icon" variant="ghost" className="h-7 w-7"
-                      onClick={() => onEditPurchase(p)}>
-                      <Edit2 className="h-3 w-3" />
-                    </Button>
-                    <Button data-testid={`button-delete-purchase-${p.id}`} size="icon" variant="ghost"
-                      className="h-7 w-7 text-destructive hover:text-destructive"
-                      onClick={() => deletePurchaseMutation.mutate(p.id!)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-0.5">
-                  {p.items.map((item: any, i: number) => (
-                    <div key={i} className="flex justify-between text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1 flex-wrap">
-                        {item.itemType && <span className="text-primary font-medium">[{item.itemType}]</span>}
-                        {item.categoryName && item.categoryName !== "PPF" && <span>{item.categoryName} › </span>}
-                        <span>{item.name}</span>
-                        <span>× {item.quantity} {item.unit}</span>
-                        {item.hsnCode && <span className="font-mono text-muted-foreground/60">HSN:{item.hsnCode}</span>}
-                      </span>
-                      <span className="flex-shrink-0 font-medium">{formatCurrency(item.quantity * item.unitPrice)}</span>
-                    </div>
-                  ))}
-                </div>
-                {p.notes && <p className="text-xs text-muted-foreground italic">{p.notes}</p>}
+      {/* Vendor Info Card */}
+      <Card className="border-border/60">
+        <CardContent className="p-5">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-4">
+              <div className="h-14 w-14 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-7 w-7 text-primary" />
               </div>
-            ))}
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 data-testid="text-detail-vendor-name" className="text-xl font-bold text-foreground">{vendor.name}</h2>
+                  {vendor.category && (
+                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-primary/10 text-primary">{vendor.category}</span>
+                  )}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+                  {vendor.contactPerson && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Building2 className="h-3.5 w-3.5" />
+                      <span>{vendor.contactPerson}</span>
+                    </div>
+                  )}
+                  {vendor.phone && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Phone className="h-3.5 w-3.5" />
+                      <span>{vendor.phone}</span>
+                    </div>
+                  )}
+                  {vendor.email && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <Mail className="h-3.5 w-3.5" />
+                      <span>{vendor.email}</span>
+                    </div>
+                  )}
+                  {vendor.address && (
+                    <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                      <MapPin className="h-3.5 w-3.5" />
+                      <span>{vendor.address}</span>
+                    </div>
+                  )}
+                </div>
+                {vendor.notes && (
+                  <p className="mt-2 text-sm text-muted-foreground italic">{vendor.notes}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <Button data-testid="button-add-purchase-detail" onClick={onAddPurchase} size="sm">
+                <Plus className="h-4 w-4 mr-1.5" /> Add Purchase
+              </Button>
+              <Button data-testid="button-edit-vendor-detail" size="icon" variant="outline" className="h-9 w-9" onClick={onEdit}>
+                <Edit2 className="h-4 w-4" />
+              </Button>
+              <Button data-testid="button-delete-vendor-detail" size="icon" variant="outline" className="h-9 w-9 text-destructive hover:text-destructive border-destructive/30" onClick={onDelete}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="mt-4 pt-4 border-t border-border/50 grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-bold text-foreground">{vendorPurchases.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Total Purchases</p>
+            </div>
+            <div className="text-center border-x border-border/40">
+              <p className="text-2xl font-bold text-primary">{formatCurrency(totalSpend)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Total Spend</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-bold text-foreground">
+                {vendorPurchases[0] ? formatDate(vendorPurchases[0].purchaseDate || vendorPurchases[0].receivedDate || "") : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Last Purchase</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Purchases List */}
+      <div>
+        <h3 className="text-base font-semibold text-foreground mb-3">Purchase History</h3>
+        {vendorPurchases.length === 0 ? (
+          <div className="text-center py-12 rounded-xl border border-dashed border-border/60">
+            <ShoppingCart className="h-10 w-10 mx-auto mb-2 opacity-25" />
+            <p className="text-muted-foreground font-medium">No purchases yet</p>
+            <p className="text-sm text-muted-foreground/70 mt-1">Click "Add Purchase" to record the first purchase from this vendor</p>
+          </div>
+        ) : (
+          <div className="rounded-xl border border-border/60 overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50 border-b border-border/60">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground">Items</th>
+                  <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden md:table-cell">Notes</th>
+                  <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
+                  <th className="px-4 py-3 w-20"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/40">
+                {vendorPurchases.map(p => (
+                  <tr data-testid={`row-vendor-purchase-${p.id}`} key={p.id} className="hover:bg-muted/20 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div>
+                        <p className="text-sm font-medium text-foreground">
+                          {p.purchaseDate ? formatDate(p.purchaseDate) : "—"}
+                        </p>
+                        {p.receivedDate && (
+                          <p className="text-[10px] text-muted-foreground">Rcvd: {formatDate(p.receivedDate)}</p>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="space-y-1">
+                        {p.items.map((item: any, i: number) => (
+                          <div key={i} className="flex items-center gap-1.5 text-xs">
+                            {item.itemType && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary flex-shrink-0">{item.itemType}</span>
+                            )}
+                            <span className="text-muted-foreground">
+                              {item.categoryName && item.categoryName !== "PPF" ? `${item.categoryName} › ` : ""}
+                              <span className="text-foreground font-medium">{item.name}</span>
+                              {" "}<span className="text-muted-foreground/70">× {item.quantity} {item.unit}</span>
+                            </span>
+                            <span className="ml-auto text-xs font-medium text-foreground flex-shrink-0">
+                              {formatCurrency(item.quantity * item.unitPrice)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 hidden md:table-cell">
+                      {p.notes ? (
+                        <span className="text-xs text-muted-foreground italic">{p.notes}</span>
+                      ) : <span className="text-xs text-muted-foreground/40">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-primary whitespace-nowrap">
+                      {formatCurrency(p.totalAmount)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button data-testid={`button-edit-purchase-${p.id}`} size="icon" variant="ghost" className="h-7 w-7"
+                          onClick={() => onEditPurchase(p)}>
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button data-testid={`button-delete-purchase-${p.id}`} size="icon" variant="ghost"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => deletePurchaseMutation.mutate(p.id!)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot className="bg-muted/30 border-t border-border/60">
+                <tr>
+                  <td colSpan={3} className="px-4 py-3 text-sm font-medium text-muted-foreground">
+                    {vendorPurchases.length} purchase{vendorPurchases.length !== 1 ? "s" : ""}
+                  </td>
+                  <td colSpan={2} className="px-4 py-3 text-right font-bold text-primary">{formatCurrency(totalSpend)}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -869,11 +992,11 @@ export default function VendorManagementPage() {
   const [isAddVendorOpen, setIsAddVendorOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
   const [purchaseView, setPurchaseView] = useState<{ vendor: Vendor; purchase?: VendorPurchase } | null>(null);
+  const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
 
   const [vendorSearch, setVendorSearch] = useState("");
   const [vendorSort, setVendorSort] = useState("name-asc");
   const [vendorFilter, setVendorFilter] = useState("all");
-  const [vendorLayout, setVendorLayout] = useState<"grid" | "list">("grid");
 
   const [purchaseSearch, setPurchaseSearch] = useState("");
   const [purchaseSort, setPurchaseSort] = useState("date-desc");
@@ -967,6 +1090,31 @@ export default function VendorManagementPage() {
     );
   }
 
+  // ── Vendor Detail View ───────────────────────────────────────────────────
+  if (selectedVendor) {
+    return (
+      <Layout>
+        <VendorDetailView
+          vendor={selectedVendor}
+          purchases={purchases}
+          onBack={() => setSelectedVendor(null)}
+          onEdit={() => { setEditingVendor(selectedVendor); }}
+          onDelete={() => { deleteVendorMutation.mutate(selectedVendor.id!); setSelectedVendor(null); }}
+          onAddPurchase={() => { setPurchaseView({ vendor: selectedVendor }); setSelectedVendor(null); }}
+          onEditPurchase={(p) => { setPurchaseView({ vendor: selectedVendor, purchase: p }); setSelectedVendor(null); }}
+        />
+        {editingVendor && (
+          <Dialog open onOpenChange={() => setEditingVendor(null)}>
+            <DialogContent className="max-w-lg">
+              <DialogHeader><DialogTitle>Edit Vendor</DialogTitle></DialogHeader>
+              <VendorForm vendor={editingVendor} onClose={() => { setEditingVendor(null); queryClient.invalidateQueries({ queryKey: ["/api/vendors"] }); }} />
+            </DialogContent>
+          </Dialog>
+        )}
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="p-6 space-y-6">
@@ -1031,9 +1179,6 @@ export default function VendorManagementPage() {
                 <Input data-testid="input-search-vendor" className="pl-9" placeholder="Search vendors..."
                   value={vendorSearch} onChange={e => setVendorSearch(e.target.value)} />
               </div>
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <SlidersHorizontal className="h-4 w-4" />
-              </div>
               <Select value={vendorFilter} onValueChange={setVendorFilter}>
                 <SelectTrigger data-testid="select-vendor-filter" className="h-9 w-36 text-sm">
                   <SelectValue placeholder="Filter by type" />
@@ -1043,9 +1188,6 @@ export default function VendorManagementPage() {
                   {VENDOR_CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
                 </SelectContent>
               </Select>
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <ArrowUpDown className="h-4 w-4" />
-              </div>
               <Select value={vendorSort} onValueChange={setVendorSort}>
                 <SelectTrigger data-testid="select-vendor-sort" className="h-9 w-44 text-sm">
                   <SelectValue placeholder="Sort" />
@@ -1058,48 +1200,51 @@ export default function VendorManagementPage() {
                   <SelectItem value="purchases-desc">Most Purchases</SelectItem>
                 </SelectContent>
               </Select>
-              <div className="ml-auto">
-                <LayoutToggle value={vendorLayout} onChange={setVendorLayout} />
-              </div>
+              {(vendorSearch || vendorFilter !== "all") && (
+                <p className="text-xs text-muted-foreground ml-1">{filteredVendors.length} of {vendors.length} vendor{vendors.length !== 1 ? "s" : ""}</p>
+              )}
             </div>
 
-            {(vendorSearch || vendorFilter !== "all") && (
-              <p className="text-xs text-muted-foreground">{filteredVendors.length} of {vendors.length} vendor{vendors.length !== 1 ? "s" : ""}</p>
-            )}
-
             {vendorsLoading ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {[1, 2, 3].map(i => <div key={i} className="h-48 rounded-xl bg-muted animate-pulse" />)}
+              <div className="rounded-xl border border-border/60 overflow-hidden">
+                {[1, 2, 3].map(i => <div key={i} className="h-16 border-b border-border/40 bg-muted/20 animate-pulse" />)}
               </div>
             ) : filteredVendors.length === 0 ? (
-              <div className="text-center py-16 text-muted-foreground">
+              <div className="text-center py-16 text-muted-foreground rounded-xl border border-dashed border-border/60">
                 <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p className="font-medium">{vendorSearch || vendorFilter !== "all" ? "No vendors match your filters" : "No vendors yet"}</p>
                 {!vendorSearch && vendorFilter === "all" && <p className="text-sm mt-1">Click "Add Vendor" to get started</p>}
               </div>
-            ) : vendorLayout === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {filteredVendors.map(vendor => (
-                  <VendorCard key={vendor.id} vendor={vendor} purchases={purchases}
-                    onEdit={() => setEditingVendor(vendor)}
-                    onDelete={() => deleteVendorMutation.mutate(vendor.id!)}
-                    onAddPurchase={() => setPurchaseView({ vendor })}
-                    onEditPurchase={(p) => setPurchaseView({ vendor, purchase: p })} />
-                ))}
-              </div>
             ) : (
               <div className="rounded-xl border border-border/60 overflow-hidden">
-                <div className="hidden md:grid grid-cols-[2fr_1.5fr_1.5fr_1.5fr_auto] gap-4 px-4 py-2 bg-muted/50 border-b border-border/60 text-xs font-medium text-muted-foreground">
-                  <span>Vendor</span><span>Contact</span><span>Phone</span><span className="hidden lg:block">Email</span><span className="text-right">Spend</span>
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b border-border/60">
+                    <tr>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Vendor</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground">Contact</th>
+                      <th className="text-left px-4 py-3 font-medium text-muted-foreground hidden lg:table-cell">Address</th>
+                      <th className="text-center px-4 py-3 font-medium text-muted-foreground">Purchases</th>
+                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Total Spend</th>
+                      <th className="px-4 py-3 w-40"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredVendors.map(vendor => (
+                      <VendorListRow
+                        key={vendor.id}
+                        vendor={vendor}
+                        purchases={purchases}
+                        onClick={() => setSelectedVendor(vendor)}
+                        onEdit={(e) => { e.stopPropagation(); setEditingVendor(vendor); }}
+                        onDelete={(e) => { e.stopPropagation(); deleteVendorMutation.mutate(vendor.id!); }}
+                        onAddPurchase={(e) => { e.stopPropagation(); setPurchaseView({ vendor }); }}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+                <div className="px-4 py-2 bg-muted/30 border-t border-border/60 text-xs text-muted-foreground">
+                  {filteredVendors.length} vendor{filteredVendors.length !== 1 ? "s" : ""} — click a row to view details and purchase history
                 </div>
-                {filteredVendors.map(vendor => (
-                  <VendorCard key={vendor.id} vendor={vendor} purchases={purchases}
-                    onEdit={() => setEditingVendor(vendor)}
-                    onDelete={() => deleteVendorMutation.mutate(vendor.id!)}
-                    onAddPurchase={() => setPurchaseView({ vendor })}
-                    onEditPurchase={(p) => setPurchaseView({ vendor, purchase: p })}
-                    listView />
-                ))}
               </div>
             )}
           </TabsContent>
