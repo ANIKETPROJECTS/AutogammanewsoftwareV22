@@ -48,7 +48,11 @@ export default function JobCardsPage() {
       
       return matchesSearch && matchesStatus && matchesDate;
     })
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    .sort((a, b) => {
+      const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return b.jobNo.localeCompare(a.jobNo, undefined, { numeric: true });
+    });
 
   const statusCounts = {
     "All Jobs": jobCards.length,

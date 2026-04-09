@@ -768,7 +768,7 @@ export class MongoStorage implements IStorage {
   }
 
   async getJobCards(): Promise<JobCard[]> {
-    const jobs = await JobCardModel.find().sort({ date: -1 });
+    const jobs = await JobCardModel.find().sort({ _id: -1 });
     return jobs.map(j => ({
       ...j.toObject(),
       id: j._id.toString(),
@@ -1656,7 +1656,7 @@ export class MongoStorage implements IStorage {
   }
 
   async getInvoices(): Promise<Invoice[]> {
-    const invoices = await InvoiceModel.find().sort({ date: -1 });
+    const invoices = await InvoiceModel.find().sort({ _id: -1 });
     const enrichedInvoices: Invoice[] = [];
     
     for (const inv of invoices) {
