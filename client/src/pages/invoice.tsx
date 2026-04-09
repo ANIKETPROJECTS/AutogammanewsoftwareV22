@@ -219,6 +219,7 @@ function PrintableInvoice({ invoice }: { invoice: Invoice }) {
               <TableHead className="text-white font-bold">Sr No.</TableHead>
               <TableHead className="text-white font-bold">Description</TableHead>
               <TableHead className="text-white font-bold">Type</TableHead>
+              <TableHead className="text-white font-bold">HSN</TableHead>
               <TableHead className="text-right text-white font-bold">Rate</TableHead>
               <TableHead className="text-center text-white font-bold">Qty</TableHead>
               <TableHead className="text-right text-white font-bold">Amount</TableHead>
@@ -239,6 +240,7 @@ function PrintableInvoice({ invoice }: { invoice: Invoice }) {
                     {item.type}
                   </Badge>
                 </TableCell>
+                <TableCell className="font-mono text-xs text-slate-600">{item.hsnCode || "-"}</TableCell>
                 <TableCell className="text-right">₹{item.price.toLocaleString()}</TableCell>
                 <TableCell className="text-center">{item.quantity || 1}</TableCell>
                 <TableCell className="text-right font-bold">
@@ -621,6 +623,8 @@ export default function InvoicePage() {
           <thead>
             <tr style="background: #1e293b; color: white;">
               <th style="padding: 12px; text-align: left;">Item</th>
+              <th style="padding: 12px; text-align: left;">Type</th>
+              <th style="padding: 12px; text-align: left;">HSN</th>
               <th style="padding: 12px; text-align: right;">Amount</th>
             </tr>
           </thead>
@@ -628,6 +632,8 @@ export default function InvoicePage() {
             ${invoice.items.filter(i => i.type !== "Labor").map((item, idx) => `
               <tr style="background: ${idx % 2 === 0 ? 'white' : '#f8fafc'};">
                 <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">${item.name}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">${item.type}</td>
+                <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; font-family: monospace; font-size: 12px; color: #475569;">${item.hsnCode || '-'}</td>
                 <td style="padding: 12px; text-align: right; border-bottom: 1px solid #e2e8f0;">₹${(item.price * (item.quantity || 1)).toLocaleString()}</td>
               </tr>
             `).join('')}

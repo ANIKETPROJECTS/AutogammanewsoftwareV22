@@ -652,10 +652,12 @@ export default function AddJobPage() {
         id: s.id!,
         name: `${s.name} (${vehicleType})`,
         price: vehiclePricing?.price || 0,
-        technician: tech?.name
+        technician: tech?.name,
+        hsnCode: serviceHsn || ""
       } as any);
       setSelectedService("");
       setSelectedTechnician("");
+      setServiceHsn("");
     }
   };
 
@@ -763,6 +765,7 @@ export default function AddJobPage() {
           warranty: selectedWarranty,
           technician: tech?.name || existingField.technician,
           price: option?.price || 0,
+          hsnCode: ppfHsn || existingField.hsnCode || ""
         };
         form.setValue("ppfs", currentPPFs);
       } else {
@@ -779,13 +782,15 @@ export default function AddJobPage() {
           }],
           price: option?.price || 0,
           technician: tech?.name,
-          warranty: selectedWarranty
+          warranty: selectedWarranty,
+          hsnCode: ppfHsn || ""
         } as any);
       }
       setSelectedPPF("");
       setSelectedPPFRoll("");
       setSelectedWarranty("");
       setRollQty(0);
+      setPpfHsn("");
       setSelectedTechnician("");
     }
   };
@@ -843,13 +848,15 @@ export default function AddJobPage() {
           accessoryId: a.id!, 
           id: a.id!,
           name: a.name, 
-          category: a.category, // Ensure category name is passed
+          category: a.category,
           price: a.price,
-          quantity: accessoryQty 
+          quantity: accessoryQty,
+          hsnCode: accessoryHsn || ""
         } as any);
       }
       setSelectedAccessory("");
       setAccessoryQty(1);
+      setAccessoryHsn("");
     }
   };
 
@@ -1471,7 +1478,7 @@ export default function AddJobPage() {
               {servicesExpanded && (
               <CardContent className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
-                  <div className="md:col-span-5 space-y-1.5">
+                  <div className="md:col-span-4 space-y-1.5">
                     <label className="text-xs font-bold text-muted-foreground uppercase">Service</label>
                     <Select value={selectedService} onValueChange={setSelectedService}>
                       <SelectTrigger className="h-11">
@@ -1497,6 +1504,10 @@ export default function AddJobPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                  </div>
+                  <div className="md:col-span-3 space-y-1.5">
+                    <label className="text-xs font-bold text-muted-foreground uppercase">HSN Code</label>
+                    <HsnCombobox value={serviceHsn} onChange={setServiceHsn} placeholder="HSN code (search or type)..." />
                   </div>
                   <div className="md:col-span-2">
                     <Button type="button" onClick={handleAddService} className="w-full h-11 bg-red-100 text-red-600 hover:bg-red-200 border-none font-semibold">
@@ -1621,6 +1632,13 @@ export default function AddJobPage() {
                     <Button type="button" onClick={handleAddPPF} className="w-full h-11 bg-red-100 text-red-600 hover:bg-red-200 border-none font-semibold">
                       Add PPF
                     </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                  <div className="md:col-span-5 space-y-1.5">
+                    <label className="text-xs font-bold text-muted-foreground uppercase">HSN Code</label>
+                    <HsnCombobox value={ppfHsn} onChange={setPpfHsn} placeholder="HSN code (search or type)..." />
                   </div>
                 </div>
 
@@ -1827,6 +1845,12 @@ export default function AddJobPage() {
                     <Button type="button" onClick={handleAddAccessory} className="w-full h-11 bg-red-100 text-red-600 hover:bg-red-200 border-none font-semibold">
                       Add Item
                     </Button>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                  <div className="md:col-span-5 space-y-1.5">
+                    <label className="text-xs font-bold text-muted-foreground uppercase">HSN Code</label>
+                    <HsnCombobox value={accessoryHsn} onChange={setAccessoryHsn} placeholder="HSN code (search or type)..." />
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
