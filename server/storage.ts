@@ -951,7 +951,7 @@ export class MongoStorage implements IStorage {
               price: a.price,
               quantity: a.quantity || 1,
               type: "Accessory",
-              category: a.accessoryId || a.id,
+              category: a.category || "",
               hsnCode: a.hsnCode || ""
             });
           }
@@ -1276,23 +1276,12 @@ export class MongoStorage implements IStorage {
       if (j.accessories) {
         for (const a of j.accessories) {
           if ((a as any).business === biz) {
-            const accId = (a as any).accessoryId || (a as any).id;
-            let categoryName = (a as any).category || accId;
-
-            // Attempt to resolve category name from AccessoryMaster if it looks like an ID
-            if (accId && mongoose.Types.ObjectId.isValid(accId)) {
-              const accessory = await AccessoryMasterModel.findById(accId);
-              if (accessory) {
-                categoryName = accessory.category;
-              }
-            }
-
             bizItems.push({ 
               name: a.name, 
               price: a.price, 
               quantity: (a as any).quantity || 1, 
               type: "Accessory",
-              category: categoryName,
+              category: (a as any).category || "",
               hsnCode: (a as any).hsnCode || ""
             });
           }
@@ -1700,6 +1689,10 @@ export class MongoStorage implements IStorage {
 
   async getInvoices(): Promise<Invoice[]> {
     const invoices = await InvoiceModel.find().sort({ _id: -1 });
+    const allCategories = await AccessoryCategoryModel.find();
+    const categoryIdToName = new Map(allCategories.map(c => [c._id.toString(), c.name]));
+    const allAccessoryMasters = await AccessoryMasterModel.find();
+    const accessoryIdToCategory = new Map(allAccessoryMasters.map(a => [a._id.toString(), a.category]));
     const enrichedInvoices: Invoice[] = [];
     
     for (const inv of invoices) {
@@ -1754,16 +1747,33 @@ export class MongoStorage implements IStorage {
                     };
                   }
                 }
-                // Accessory items
-                if (item.type === "Accessory" && jobCard.accessories) {
-                  const matchingAccessory = (jobCard.accessories as any[]).find(a => a.name === item.name);
-                  if (matchingAccessory) {
-                    return {
-                      ...item,
-                      category: item.category || matchingAccessory.category,
-                      quantity: item.quantity || matchingAccessory.quantity || item.quantity || 1,
-                    };
+                // Accessory items - resolve ObjectId category to name
+                if (item.type === "Accessory") {
+                  let resolvedCategory = item.category || "";
+                  if (resolvedCategory && mongoose.Types.ObjectId.isValid(resolvedCategory)) {
+                    resolvedCategory = categoryIdToName.get(resolvedCategory) || accessoryIdToCategory.get(resolvedCategory) || resolvedCategory;
                   }
+                  if (resolvedCategory && mongoose.Types.ObjectId.isValid(resolvedCategory)) {
+                    resolvedCategory = categoryIdToName.get(resolvedCategory) || resolvedCategory;
+                  }
+                  if (jobCard.accessories) {
+                    const matchingAccessory = (jobCard.accessories as any[]).find(a => a.name === item.name);
+                    if (matchingAccessory) {
+                      let accCategory = (matchingAccessory.category || "");
+                      if (accCategory && mongoose.Types.ObjectId.isValid(accCategory)) {
+                        accCategory = categoryIdToName.get(accCategory) || accCategory;
+                      }
+                      resolvedCategory = resolvedCategory && !mongoose.Types.ObjectId.isValid(resolvedCategory)
+                        ? resolvedCategory
+                        : (accCategory || resolvedCategory);
+                      return {
+                        ...item,
+                        category: resolvedCategory,
+                        quantity: item.quantity || matchingAccessory.quantity || 1,
+                      };
+                    }
+                  }
+                  return { ...item, category: resolvedCategory };
                 }
                 return item;
               });
@@ -1774,6 +1784,17 @@ export class MongoStorage implements IStorage {
         }
       }
       
+      // Final pass: resolve any remaining ObjectId categories on accessory items
+      if (enrichedInvoice.items && enrichedInvoice.items.length > 0) {
+        enrichedInvoice.items = enrichedInvoice.items.map((item: any) => {
+          if (item.type === "Accessory" && item.category && mongoose.Types.ObjectId.isValid(item.category)) {
+            const resolved = categoryIdToName.get(item.category) || accessoryIdToCategory.get(item.category) || item.category;
+            return { ...item, category: mongoose.Types.ObjectId.isValid(resolved) ? "" : resolved };
+          }
+          return item;
+        });
+      }
+
       enrichedInvoices.push(enrichedInvoice as Invoice);
     }
     
@@ -1782,6 +1803,10 @@ export class MongoStorage implements IStorage {
 
   async getInvoicesByPhone(phone: string): Promise<Invoice[]> {
     const invoices = await InvoiceModel.find({ phoneNumber: phone }).sort({ date: -1 });
+    const allCategories = await AccessoryCategoryModel.find();
+    const categoryIdToName = new Map(allCategories.map(c => [c._id.toString(), c.name]));
+    const allAccessoryMasters = await AccessoryMasterModel.find();
+    const accessoryIdToCategory = new Map(allAccessoryMasters.map(a => [a._id.toString(), a.category]));
     const enrichedInvoices: Invoice[] = [];
     
     for (const inv of invoices) {
@@ -1831,15 +1856,29 @@ export class MongoStorage implements IStorage {
                     };
                   }
                 }
-                if (item.type === "Accessory" && jobCard.accessories) {
-                  const matchingAccessory = (jobCard.accessories as any[]).find(a => a.name === item.name);
-                  if (matchingAccessory) {
-                    return {
-                      ...item,
-                      category: item.category || matchingAccessory.category,
-                      quantity: item.quantity || matchingAccessory.quantity || item.quantity || 1,
-                    };
+                if (item.type === "Accessory") {
+                  let resolvedCategory = item.category || "";
+                  if (resolvedCategory && mongoose.Types.ObjectId.isValid(resolvedCategory)) {
+                    resolvedCategory = categoryIdToName.get(resolvedCategory) || accessoryIdToCategory.get(resolvedCategory) || resolvedCategory;
                   }
+                  if (jobCard.accessories) {
+                    const matchingAccessory = (jobCard.accessories as any[]).find(a => a.name === item.name);
+                    if (matchingAccessory) {
+                      let accCategory = matchingAccessory.category || "";
+                      if (accCategory && mongoose.Types.ObjectId.isValid(accCategory)) {
+                        accCategory = categoryIdToName.get(accCategory) || accCategory;
+                      }
+                      resolvedCategory = resolvedCategory && !mongoose.Types.ObjectId.isValid(resolvedCategory)
+                        ? resolvedCategory
+                        : (accCategory || resolvedCategory);
+                      return {
+                        ...item,
+                        category: resolvedCategory,
+                        quantity: item.quantity || matchingAccessory.quantity || 1,
+                      };
+                    }
+                  }
+                  return { ...item, category: resolvedCategory };
                 }
                 return item;
               });
@@ -1848,6 +1887,17 @@ export class MongoStorage implements IStorage {
         } catch (e) {
           console.error("Error enriching invoice with job card data:", e);
         }
+      }
+
+      // Final pass: resolve any remaining ObjectId categories on accessory items
+      if (enrichedInvoice.items && enrichedInvoice.items.length > 0) {
+        enrichedInvoice.items = enrichedInvoice.items.map((item: any) => {
+          if (item.type === "Accessory" && item.category && mongoose.Types.ObjectId.isValid(item.category)) {
+            const resolved = categoryIdToName.get(item.category) || accessoryIdToCategory.get(item.category) || item.category;
+            return { ...item, category: mongoose.Types.ObjectId.isValid(resolved) ? "" : resolved };
+          }
+          return item;
+        });
       }
       
       enrichedInvoices.push(enrichedInvoice as Invoice);
