@@ -1002,86 +1002,56 @@ function VendorDetailView({ vendor, purchases, onBack, onEdit, onDelete, onAddPu
                 <thead className="bg-muted/50 border-b border-border/60">
                   <tr>
                     <th className="text-left px-4 py-3 font-medium text-muted-foreground">Date</th>
-                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">Items</th>
-                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Unit Price</th>
-                    <th className="text-right px-4 py-3 font-medium text-emerald-600">Sell Price</th>
+                    <th className="text-left px-4 py-3 font-medium text-muted-foreground">No. of Items</th>
                     <th className="text-right px-4 py-3 font-medium text-muted-foreground">Purchase Cost</th>
-                    <th className="text-right px-4 py-3 font-medium text-emerald-600">Selling Total</th>
+                    <th className="text-right px-4 py-3 font-medium text-muted-foreground">Selling Total</th>
                     <th className="px-4 py-3 w-28 text-right font-medium text-muted-foreground">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/40">
-                  {pagedPurchases.map(p => {
-                    return (
-                      <tr data-testid={`row-vendor-purchase-${p.id}`} key={p.id} className="hover:bg-muted/20 transition-colors align-top">
-                        <td className="px-4 py-3 whitespace-nowrap">
-                          <p className="text-sm font-medium text-foreground">{p.purchaseDate ? formatDate(p.purchaseDate) : "—"}</p>
-                          {p.receivedDate && <p className="text-xs text-muted-foreground mt-0.5">Recd: {formatDate(p.receivedDate)}</p>}
-                        </td>
-                        <td className="px-4 py-3">
-                          {p.items.map((item: any, i: number) => (
-                            <div key={i} className="mb-1 last:mb-0">
-                              <div className="flex items-center gap-1 flex-wrap">
-                                {item.itemType && <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-primary/10 text-primary">{item.itemType}</span>}
-                                <span className="text-sm font-medium text-foreground">
-                                  {item.categoryName && item.categoryName !== "PPF" ? `${item.categoryName} › ` : ""}
-                                  {item.name}
-                                </span>
-                                {item.rollName && <span className="text-xs text-muted-foreground">({item.rollName})</span>}
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-xs text-muted-foreground">{item.quantity} {item.unit}</span>
-                                {item.hsnCode && <span className="text-[10px] font-mono bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-1.5 rounded border border-amber-200/50">HSN {item.hsnCode}</span>}
-                              </div>
-                            </div>
-                          ))}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {p.items.map((item: any, i: number) => (
-                            <p key={i} className="text-sm text-muted-foreground mb-1 last:mb-0">{formatCurrency(item.unitPrice || 0)}</p>
-                          ))}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {p.items.map((item: any, i: number) => (
-                            <p key={i} className={`text-sm mb-1 last:mb-0 ${item.sellingPrice > 0 ? "font-semibold text-emerald-600" : "text-muted-foreground/40"}`}>
-                              {item.sellingPrice > 0 ? formatCurrency(item.sellingPrice) : "—"}
-                            </p>
-                          ))}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-foreground whitespace-nowrap">
-                          {formatCurrency(p.totalAmount)}
-                        </td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">
-                          {(p as any).sellingTotal > 0 ? formatCurrency((p as any).sellingTotal) : <span className="text-muted-foreground/40 font-normal">—</span>}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button data-testid={`button-view-purchase-${p.id}`} size="sm" variant="outline" className="h-7 text-xs"
-                              onClick={() => setViewingPurchase(p)}>
-                              <Eye className="h-3 w-3 mr-1" /> View
-                            </Button>
-                            <Button data-testid={`button-edit-purchase-${p.id}`} size="icon" variant="ghost" className="h-7 w-7"
-                              onClick={() => onEditPurchase(p)}>
-                              <Edit2 className="h-3.5 w-3.5" />
-                            </Button>
-                            <Button data-testid={`button-delete-purchase-${p.id}`} size="icon" variant="ghost"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                              onClick={() => deletePurchaseMutation.mutate(p.id!)}>
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {pagedPurchases.map(p => (
+                    <tr data-testid={`row-vendor-purchase-${p.id}`} key={p.id} className="hover:bg-muted/20 transition-colors">
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <p className="text-sm font-medium text-foreground">{p.purchaseDate ? formatDate(p.purchaseDate) : "—"}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-sm text-muted-foreground">{p.items.length} item{p.items.length !== 1 ? "s" : ""}</span>
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold text-foreground whitespace-nowrap">
+                        {formatCurrency(p.totalAmount)}
+                      </td>
+                      <td className="px-4 py-3 text-right font-semibold whitespace-nowrap">
+                        {(p as any).sellingTotal > 0
+                          ? <span className="text-foreground">{formatCurrency((p as any).sellingTotal)}</span>
+                          : <span className="text-muted-foreground/40">—</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button data-testid={`button-view-purchase-${p.id}`} size="sm" variant="outline" className="h-7 text-xs"
+                            onClick={() => setViewingPurchase(p)}>
+                            <Eye className="h-3 w-3 mr-1" /> View
+                          </Button>
+                          <Button data-testid={`button-edit-purchase-${p.id}`} size="icon" variant="ghost" className="h-7 w-7"
+                            onClick={() => onEditPurchase(p)}>
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button data-testid={`button-delete-purchase-${p.id}`} size="icon" variant="ghost"
+                            className="h-7 w-7 text-destructive hover:text-destructive"
+                            onClick={() => deletePurchaseMutation.mutate(p.id!)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
                 <tfoot className="bg-muted/30 border-t border-border/60">
                   <tr>
-                    <td colSpan={4} className="px-4 py-3 text-sm font-medium text-muted-foreground">
+                    <td colSpan={2} className="px-4 py-3 text-sm font-medium text-muted-foreground">
                       {vendorPurchases.length} purchase{vendorPurchases.length !== 1 ? "s" : ""}
                     </td>
                     <td className="px-4 py-3 text-right font-bold text-foreground">{formatCurrency(totalSpend)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-emerald-600">
+                    <td className="px-4 py-3 text-right font-bold text-foreground">
                       {formatCurrency(vendorPurchases.reduce((s, p) => s + ((p as any).sellingTotal || 0), 0))}
                     </td>
                     <td />
@@ -1122,127 +1092,113 @@ function VendorDetailView({ vendor, purchases, onBack, onEdit, onDelete, onAddPu
       {/* Purchase Detail Dialog */}
       {viewingPurchase && (
         <Dialog open onOpenChange={() => setViewingPurchase(null)}>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader className="pb-2">
-              <DialogTitle className="text-lg">Purchase Details</DialogTitle>
+          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader className="pb-3 border-b border-border/40">
+              <DialogTitle className="text-base font-semibold">Purchase Details</DialogTitle>
             </DialogHeader>
 
-            <div className="space-y-5">
-              {/* Meta row */}
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Vendor</p>
-                  <p className="font-semibold text-foreground">{vendor.name}</p>
+            <div className="space-y-5 pt-1">
+              {/* Meta: Vendor + Received Date + totals — all in one horizontal row */}
+              <div className="grid grid-cols-4 divide-x divide-border/40 border border-border/50 rounded-xl overflow-hidden">
+                <div className="px-4 py-3">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Vendor</p>
+                  <p className="text-sm font-semibold text-foreground">{vendor.name}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Purchase Date</p>
-                  <p className="font-semibold text-foreground">{viewingPurchase.purchaseDate ? formatDate(viewingPurchase.purchaseDate) : "—"}</p>
+                <div className="px-4 py-3">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Received Date</p>
+                  <p className="text-sm font-semibold text-foreground">{viewingPurchase.receivedDate ? formatDate(viewingPurchase.receivedDate) : "—"}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Received Date</p>
-                  <p className="font-semibold text-foreground">{viewingPurchase.receivedDate ? formatDate(viewingPurchase.receivedDate) : "—"}</p>
+                <div className="px-4 py-3">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Purchase Cost</p>
+                  <p className="text-sm font-bold text-foreground">{formatCurrency(viewingPurchase.totalAmount)}</p>
                 </div>
-              </div>
-
-              {/* Summary totals */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border border-border/60 bg-muted/30 px-4 py-3">
-                  <p className="text-xs font-medium text-muted-foreground mb-1">Purchase Cost</p>
-                  <p className="text-xl font-bold text-foreground">{formatCurrency(viewingPurchase.totalAmount)}</p>
-                </div>
-                <div className="rounded-xl border border-emerald-200/60 dark:border-emerald-800/30 bg-emerald-50/50 dark:bg-emerald-950/20 px-4 py-3">
-                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">Selling Total</p>
-                  <p className="text-xl font-bold text-emerald-600">{formatCurrency((viewingPurchase as any).sellingTotal || 0)}</p>
+                <div className="px-4 py-3">
+                  <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1">Selling Total</p>
+                  <p className="text-sm font-bold text-foreground">{formatCurrency((viewingPurchase as any).sellingTotal || 0)}</p>
                 </div>
               </div>
 
-              {/* Items table */}
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Items</p>
-                <div className="rounded-xl border border-border/60 overflow-hidden">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50 border-b border-border/40">
-                      <tr>
-                        <th className="text-left px-4 py-2.5 text-xs font-medium text-muted-foreground">Item</th>
-                        <th className="text-center px-3 py-2.5 text-xs font-medium text-muted-foreground">Qty</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Unit Price</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-muted-foreground">Cost Total</th>
-                        <th className="text-right px-3 py-2.5 text-xs font-medium text-emerald-600">Sell Price</th>
-                        <th className="text-right px-4 py-2.5 text-xs font-medium text-emerald-600">Sell Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/30">
-                      {viewingPurchase.items.map((item: any, i: number) => (
-                        <tr key={i} className="hover:bg-muted/10 transition-colors">
-                          <td className="px-4 py-3">
-                            <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
-                              {item.itemType && (
-                                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-primary/10 text-primary">{item.itemType}</span>
-                              )}
-                              <span className="font-medium text-foreground text-sm">
-                                {item.categoryName && item.categoryName !== "PPF" ? `${item.categoryName} › ` : ""}
-                                {item.name}
-                              </span>
-                              {item.rollName && (
-                                <span className="text-xs text-muted-foreground">· {item.rollName}</span>
-                              )}
-                            </div>
-                            {item.hsnCode && (
-                              <span className="inline-flex items-center text-[10px] font-mono bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/30 px-1.5 py-0.5 rounded text-amber-700 dark:text-amber-400">
-                                HSN {item.hsnCode}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-3 py-3 text-center text-sm text-muted-foreground whitespace-nowrap">
-                            {item.quantity} {item.unit}
-                          </td>
-                          <td className="px-3 py-3 text-right text-sm text-muted-foreground whitespace-nowrap">
-                            {formatCurrency(item.unitPrice || 0)}
-                          </td>
-                          <td className="px-3 py-3 text-right text-sm font-semibold text-foreground whitespace-nowrap">
-                            {formatCurrency(item.quantity * (item.unitPrice || 0))}
-                          </td>
-                          <td className="px-3 py-3 text-right text-sm whitespace-nowrap">
-                            {item.sellingPrice > 0
-                              ? <span className="text-emerald-600">{formatCurrency(item.sellingPrice)}</span>
-                              : <span className="text-muted-foreground/40">—</span>}
-                          </td>
-                          <td className="px-4 py-3 text-right text-sm font-bold whitespace-nowrap">
-                            {item.sellingPrice > 0
-                              ? <span className="text-emerald-600">{formatCurrency(item.quantity * item.sellingPrice)}</span>
-                              : <span className="text-muted-foreground/40">—</span>}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot className="bg-muted/30 border-t border-border/50">
-                      <tr>
-                        <td colSpan={3} className="px-4 py-2.5 text-xs font-medium text-muted-foreground">
-                          {viewingPurchase.items.length} item{viewingPurchase.items.length !== 1 ? "s" : ""}
+              {/* Items — clean columnar table */}
+              <div className="rounded-xl border border-border/60 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/40 border-b border-border/40">
+                    <tr>
+                      <th className="text-left px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Type</th>
+                      <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Item</th>
+                      <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Roll / Batch</th>
+                      <th className="text-left px-3 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">HSN</th>
+                      <th className="text-right px-3 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Qty</th>
+                      <th className="text-right px-3 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Unit Price</th>
+                      <th className="text-right px-3 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Cost Total</th>
+                      <th className="text-right px-3 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Sell Price</th>
+                      <th className="text-right px-4 py-2.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Sell Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/30">
+                    {viewingPurchase.items.map((item: any, i: number) => (
+                      <tr key={i} className="hover:bg-muted/10 transition-colors">
+                        <td className="px-4 py-3 whitespace-nowrap">
+                          <span className="text-xs font-semibold text-foreground">{item.itemType || "—"}</span>
                         </td>
-                        <td className="px-3 py-2.5 text-right text-sm font-bold text-foreground whitespace-nowrap">
-                          {formatCurrency(viewingPurchase.totalAmount)}
+                        <td className="px-3 py-3">
+                          <span className="text-sm font-medium text-foreground">
+                            {item.categoryName && item.categoryName !== "PPF" ? `${item.categoryName} › ` : ""}
+                            {item.name}
+                          </span>
                         </td>
-                        <td />
-                        <td className="px-4 py-2.5 text-right text-sm font-bold text-emerald-600 whitespace-nowrap">
-                          {(viewingPurchase as any).sellingTotal ? formatCurrency((viewingPurchase as any).sellingTotal) : "—"}
+                        <td className="px-3 py-3 text-sm text-muted-foreground whitespace-nowrap">
+                          {item.rollName || "—"}
+                        </td>
+                        <td className="px-3 py-3 whitespace-nowrap">
+                          {item.hsnCode
+                            ? <span className="text-xs font-mono text-foreground">{item.hsnCode}</span>
+                            : <span className="text-muted-foreground/40">—</span>}
+                        </td>
+                        <td className="px-3 py-3 text-right text-sm text-foreground whitespace-nowrap">
+                          {item.quantity} {item.unit}
+                        </td>
+                        <td className="px-3 py-3 text-right text-sm text-foreground whitespace-nowrap">
+                          {formatCurrency(item.unitPrice || 0)}
+                        </td>
+                        <td className="px-3 py-3 text-right text-sm font-semibold text-foreground whitespace-nowrap">
+                          {formatCurrency(item.quantity * (item.unitPrice || 0))}
+                        </td>
+                        <td className="px-3 py-3 text-right text-sm text-foreground whitespace-nowrap">
+                          {item.sellingPrice > 0 ? formatCurrency(item.sellingPrice) : <span className="text-muted-foreground/40">—</span>}
+                        </td>
+                        <td className="px-4 py-3 text-right text-sm font-semibold text-foreground whitespace-nowrap">
+                          {item.sellingPrice > 0 ? formatCurrency(item.quantity * item.sellingPrice) : <span className="text-muted-foreground/40">—</span>}
                         </td>
                       </tr>
-                    </tfoot>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                  <tfoot className="bg-muted/30 border-t border-border/50">
+                    <tr>
+                      <td colSpan={6} className="px-4 py-2.5 text-xs font-medium text-muted-foreground">
+                        {viewingPurchase.items.length} item{viewingPurchase.items.length !== 1 ? "s" : ""}
+                      </td>
+                      <td className="px-3 py-2.5 text-right text-sm font-bold text-foreground whitespace-nowrap">
+                        {formatCurrency(viewingPurchase.totalAmount)}
+                      </td>
+                      <td />
+                      <td className="px-4 py-2.5 text-right text-sm font-bold text-foreground whitespace-nowrap">
+                        {(viewingPurchase as any).sellingTotal ? formatCurrency((viewingPurchase as any).sellingTotal) : "—"}
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
 
               {/* Notes */}
               {viewingPurchase.notes && (
-                <div className="rounded-xl bg-muted/40 px-4 py-3">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-1.5">Notes</p>
+                <div>
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide mb-1.5">Notes</p>
                   <p className="text-sm text-foreground italic">{viewingPurchase.notes}</p>
                 </div>
               )}
 
               {/* Actions */}
-              <div className="flex justify-end gap-2 pt-1 border-t border-border/40">
+              <div className="flex justify-end gap-2 pt-2 border-t border-border/40">
                 <Button variant="outline" onClick={() => setViewingPurchase(null)}>Close</Button>
                 <Button onClick={() => { onEditPurchase(viewingPurchase); setViewingPurchase(null); }}>
                   <Edit2 className="h-4 w-4 mr-1.5" /> Edit Purchase
