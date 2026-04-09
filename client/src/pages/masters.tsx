@@ -4,7 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Wrench, Shield, Package, Car, X, Edit2, LayoutGrid, ChevronDown, ChevronUp, Archive, ArrowLeft, History, ArrowUpDown, ArrowUp, ArrowDown, Filter, RotateCcw } from "lucide-react";
+import { Plus, Trash2, Wrench, Shield, Package, Car, X, Edit2, LayoutGrid, ChevronDown, ChevronUp, Archive, ArrowLeft, History, ArrowUpDown, ArrowUp, ArrowDown, Filter, RotateCcw, Layers } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "@shared/routes";
@@ -51,6 +51,7 @@ export default function MastersPage() {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [accessorySearchQuery, setAccessorySearchQuery] = useState("");
   const [expandedRolls, setExpandedRolls] = useState<Set<string>>(new Set());
+  const [managingRollsPPF, setManagingRollsPPF] = useState<PPFMaster | null>(null);
   const [usedRollSearch, setUsedRollSearch] = useState("");
   const [usedRollSortKey, setUsedRollSortKey] = useState<"name" | "ppf" | "stock">("stock");
   const [usedRollSortDir, setUsedRollSortDir] = useState<"asc" | "desc">("asc");
@@ -500,12 +501,14 @@ export default function MastersPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {ppfs.map((ppf) => {
                 const activeRolls = (ppf.rolls || []).filter(r => r.stock > 10);
-                const isExpanded = expandedRolls.has(ppf.id!);
                 return (
                 <Card key={ppf.id}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0">
                     <CardTitle className="text-lg">{ppf.name}</CardTitle>
                     <div className="flex gap-1">
+                      <Button variant="ghost" size="icon" title="Manage Rolls" onClick={() => setManagingRollsPPF(ppf)}>
+                        <Layers className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => setEditingPPF(ppf)}>
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -531,28 +534,16 @@ export default function MastersPage() {
                           ))}
                         </div>
                       ))}
-                      
-                      {activeRolls.length > 0 && (
-                        <div className="pt-2 border-t mt-2">
-                          <button
-                            className="w-full flex items-center justify-between text-xs font-bold uppercase mb-1 hover:text-primary transition-colors"
-                            onClick={() => toggleRollExpand(ppf.id!)}
-                          >
-                            <span>Roll Inventory ({activeRolls.length})</span>
-                            {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                          </button>
-                          {isExpanded && (
-                            <div className="space-y-1 mt-2">
-                              {activeRolls.map((roll, i) => (
-                                <div key={i} className="flex justify-between items-center text-[10px] bg-muted/50 p-1 px-2 rounded">
-                                  <span className="font-bold">{roll.name || `Roll #${i+1}`}</span>
-                                  <span>{roll.stock} sqft</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <button
+                        className="w-full flex items-center justify-between text-xs text-muted-foreground hover:text-primary transition-colors pt-2 border-t mt-2"
+                        onClick={() => setManagingRollsPPF(ppf)}
+                      >
+                        <span className="flex items-center gap-1.5">
+                          <Layers className="h-3.5 w-3.5" />
+                          Roll Inventory
+                        </span>
+                        <span className="font-semibold">{activeRolls.length} roll{activeRolls.length !== 1 ? "s" : ""}</span>
+                      </button>
                     </div>
                   </CardContent>
                 </Card>
@@ -570,6 +561,23 @@ export default function MastersPage() {
                     onClose={() => setEditingPPF(null)} 
                     vehicleTypes={vehicleTypes} 
                     initialData={editingPPF} 
+                  />
+                )}
+              </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!managingRollsPPF} onOpenChange={(open) => !open && setManagingRollsPPF(null)}>
+              <DialogContent className="max-w-lg max-h-[85vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Layers className="h-4 w-4" />
+                    Roll Inventory — {managingRollsPPF?.name}
+                  </DialogTitle>
+                </DialogHeader>
+                {managingRollsPPF && (
+                  <ManageRollsForm
+                    ppf={managingRollsPPF}
+                    onClose={() => setManagingRollsPPF(null)}
                   />
                 )}
               </DialogContent>
@@ -924,59 +932,136 @@ function AddPPFForm({ onClose, vehicleTypes, initialData }: { onClose: () => voi
         ))}
       </div>
 
-      <div className="space-y-4 pt-4 border-t">
-        <div className="flex items-center justify-between">
-          <Label className="text-lg font-bold">Roll Inventory</Label>
-          <Button variant="outline" size="sm" onClick={addRoll} className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            Add New Roll
-          </Button>
-        </div>
-
-        {rolls.map((roll, index) => (
-          <Card key={index} className="border-dashed">
-            <CardHeader className="py-2 bg-muted/30 flex flex-row items-center justify-between space-y-0">
-              <span className="text-xs font-bold uppercase">{roll.name || `Roll #${index + 1}`}</span>
-              <Button variant="ghost" size="sm" onClick={() => removeRoll(index)}>
-                <X className="h-4 w-4 text-destructive" />
-              </Button>
-            </CardHeader>
-            <CardContent className="pt-3 pb-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[10px] uppercase text-muted-foreground">Roll Name</Label>
-                  <Input 
-                    placeholder="e.g. Front Roll" 
-                    value={roll.name} 
-                    onChange={(e) => updateRoll(index, "name", e.target.value)} 
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-[10px] uppercase text-muted-foreground">Stock (sqft)</Label>
-                  <Input 
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    placeholder="0" 
-                    value={roll.stock} 
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      if (value === "" || /^[0-9]+$/.test(value)) {
-                        updateRoll(index, "stock", value);
-                      }
-                    }} 
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
       <div className="flex justify-end gap-3 pt-4 border-t">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
         <Button onClick={() => ppfMutation.mutate({ name, pricingByVehicleType: pricing, rolls })}>
           {initialData ? "Update PPF" : "Save PPF"}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ManageRollsForm({ ppf, onClose }: { ppf: PPFMaster; onClose: () => void }) {
+  const { toast } = useToast();
+  const [rolls, setRolls] = useState<any[]>(ppf.rolls || []);
+  const [newRollName, setNewRollName] = useState("");
+  const [newRollStock, setNewRollStock] = useState("");
+
+  const ppfMutation = useMutation({
+    mutationFn: (data: any) => apiRequest("PATCH", `/api/masters/ppf/${ppf.id}`, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [api.masters.ppf.list.path] });
+      toast({ title: "Success", description: "Roll inventory updated" });
+      onClose();
+    },
+  });
+
+  const addRoll = () => {
+    if (!newRollName.trim()) return;
+    setRolls([...rolls, { name: newRollName.trim(), stock: parseInt(newRollStock) || 0 }]);
+    setNewRollName("");
+    setNewRollStock("");
+  };
+
+  const updateRoll = (index: number, field: string, value: any) => {
+    const updated = [...rolls];
+    updated[index] = { ...updated[index], [field]: value };
+    setRolls(updated);
+  };
+
+  const removeRoll = (index: number) => {
+    const updated = [...rolls];
+    updated.splice(index, 1);
+    setRolls(updated);
+  };
+
+  return (
+    <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="space-y-3 p-1 overflow-y-auto flex-1">
+        <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+          <p className="text-xs font-semibold uppercase text-muted-foreground">Add New Roll</p>
+          <div className="flex gap-2 items-end">
+            <div className="flex-1 space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Roll Name</Label>
+              <Input
+                placeholder="e.g. Front Roll"
+                value={newRollName}
+                onChange={(e) => setNewRollName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addRoll()}
+              />
+            </div>
+            <div className="w-28 space-y-1">
+              <Label className="text-[10px] uppercase text-muted-foreground">Stock (sqft)</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="0"
+                value={newRollStock}
+                onChange={(e) => {
+                  if (e.target.value === "" || /^[0-9]+$/.test(e.target.value)) {
+                    setNewRollStock(e.target.value);
+                  }
+                }}
+                onKeyDown={(e) => e.key === "Enter" && addRoll()}
+              />
+            </div>
+            <Button onClick={addRoll} className="shrink-0">
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Button>
+          </div>
+        </div>
+
+        {rolls.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+            <Layers className="h-8 w-8 mb-2 opacity-30" />
+            <p className="text-sm">No rolls added yet.</p>
+            <p className="text-xs mt-1">Use the form above to add your first roll.</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase text-muted-foreground px-1">Existing Rolls ({rolls.length})</p>
+            {rolls.map((roll, index) => (
+              <div key={index} className="flex gap-2 items-center border rounded-lg px-3 py-2 bg-background">
+                <div className="flex-1">
+                  <Input
+                    placeholder="Roll name"
+                    value={roll.name}
+                    onChange={(e) => updateRoll(index, "name", e.target.value)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="w-24">
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="0"
+                    value={roll.stock}
+                    onChange={(e) => {
+                      if (e.target.value === "" || /^[0-9]+$/.test(e.target.value)) {
+                        updateRoll(index, "stock", e.target.value);
+                      }
+                    }}
+                    className="h-8 text-sm text-right"
+                  />
+                </div>
+                <span className="text-xs text-muted-foreground shrink-0">sqft</span>
+                <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => removeRoll(index)}>
+                  <X className="h-3.5 w-3.5 text-destructive" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-3 pt-4 border-t mt-4 shrink-0">
+        <Button variant="outline" onClick={onClose}>Cancel</Button>
+        <Button onClick={() => ppfMutation.mutate({ name: ppf.name, pricingByVehicleType: ppf.pricingByVehicleType, rolls })}>
+          Save Rolls
         </Button>
       </div>
     </div>
