@@ -135,10 +135,9 @@ export default function JobDetailsPage() {
         const totalBeforeGst = subtotal + businessLabor - businessDiscount;
         const gstAmount = (totalBeforeGst * gstPercentage) / 100;
 
-        const invoiceTotal = totalBeforeGst + gstAmount;
-
         // For split invoices (multiple businesses), each invoice should only show
-        // a payment equal to its own total, not the combined job total.
+        // a payment equal to its own Grand Total (= subtotal - discount = totalBeforeGst),
+        // not the combined job payment.
         let invoicePayments: { amount: number; method: string; date: string }[] = [];
         if (job.isPaid && job.payments && job.payments.length > 0) {
           if (businesses.length === 1) {
@@ -146,10 +145,10 @@ export default function JobDetailsPage() {
             invoicePayments = job.payments;
           } else {
             // Split between multiple businesses — assign each invoice a payment
-            // equal to its own total using the method/date of the first job payment
+            // equal to its own displayed Grand Total (totalBeforeGst)
             const firstPayment = job.payments[0];
             invoicePayments = [{
-              amount: invoiceTotal,
+              amount: totalBeforeGst,
               method: firstPayment.method,
               date: firstPayment.date
             }];

@@ -992,6 +992,18 @@ export class MongoStorage implements IStorage {
         const bizPrefix = biz === "Auto Gamma" ? "AG" : "AGNX";
         const invoiceNo = `${bizPrefix}-${yearInvoice}-${(invCount + 1).toString().padStart(4, "0")}`;
 
+        // For split invoices, each invoice should only carry its own share of payment
+        const jobPaymentsCreate: any[] = (j as any).payments || [];
+        let invoicePaymentsCreate: any[] = [];
+        if ((j as any).isPaid && jobPaymentsCreate.length > 0) {
+          if (bizCount === 1) {
+            invoicePaymentsCreate = jobPaymentsCreate;
+          } else {
+            const fp = jobPaymentsCreate[0];
+            invoicePaymentsCreate = [{ amount: totalAmount, method: fp.method, date: fp.date }];
+          }
+        }
+
         const inv = new InvoiceModel({
           invoiceNo,
           jobCardId: j._id.toString(),
@@ -1014,7 +1026,7 @@ export class MongoStorage implements IStorage {
           totalAmount,
           date: j.date,
           isPaid: (j as any).isPaid || false,
-          payments: (j as any).payments || []
+          payments: invoicePaymentsCreate
         });
         await inv.save();
       }
@@ -1390,6 +1402,18 @@ export class MongoStorage implements IStorage {
             }
           }
 
+          // For split invoices, each invoice should only carry its own share of payment
+          const jobPaymentsUpdate: any[] = (j as any).payments || [];
+          let invoicePaymentsUpdate: any[] = [];
+          if ((j as any).isPaid && jobPaymentsUpdate.length > 0) {
+            if (bizCount === 1) {
+              invoicePaymentsUpdate = jobPaymentsUpdate;
+            } else {
+              const fp = jobPaymentsUpdate[0];
+              invoicePaymentsUpdate = [{ amount: totalAmount, method: fp.method, date: fp.date }];
+            }
+          }
+
           // Update existing invoice
           await InvoiceModel.findByIdAndUpdate(existingInvoice._id, {
             customerName: j.customerName,
@@ -1410,7 +1434,7 @@ export class MongoStorage implements IStorage {
             totalAmount,
             date: j.date,
             isPaid: (j as any).isPaid,
-            payments: (j as any).payments || []
+            payments: invoicePaymentsUpdate
           });
         } else {
           // Deduct PPF roll stock before creating the first invoice for this business
@@ -1469,6 +1493,18 @@ export class MongoStorage implements IStorage {
           const invCount = await InvoiceModel.countDocuments({ business: biz });
           const bizPrefix = biz === "Auto Gamma" ? "AG" : "AGNX";
           const invoiceNo = `${bizPrefix}-${year}-${(invCount + 1).toString().padStart(4, "0")}`;
+
+          // For split invoices, each invoice should only carry its own share of payment
+          const jobPaymentsNew: any[] = (j as any).payments || [];
+          let invoicePaymentsNew: any[] = [];
+          if ((j as any).isPaid && jobPaymentsNew.length > 0) {
+            if (bizCount === 1) {
+              invoicePaymentsNew = jobPaymentsNew;
+            } else {
+              const fp = jobPaymentsNew[0];
+              invoicePaymentsNew = [{ amount: totalAmount, method: fp.method, date: fp.date }];
+            }
+          }
           
           const inv = new InvoiceModel({
             invoiceNo,
@@ -1492,7 +1528,7 @@ export class MongoStorage implements IStorage {
             totalAmount,
             date: j.date,
             isPaid: (j as any).isPaid || false,
-            payments: (j as any).payments || []
+            payments: invoicePaymentsNew
           });
           await inv.save();
         }
