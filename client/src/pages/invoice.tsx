@@ -512,41 +512,46 @@ export default function InvoicePage() {
       return;
     }
 
-    const excelData = businessInvoices.map(inv => {
-      const serviceDetails = inv.items.map(item => {
-        let details = item.name;
-        if (item.quantity && item.quantity > 1) details += ` (Qty: ${item.quantity})`;
-        if (item.category) details += ` [Cat: ${item.category}]`;
-        if (item.warranty) details += ` [Warranty: ${item.warranty}]`;
-        return details;
-      }).join(", ");
+    const excelData: Record<string, any>[] = [];
 
+    businessInvoices.forEach(inv => {
       const { status, paidAmount } = getPaymentStatus(inv);
+      const invoiceTotal = inv.totalAmount || 0;
+      const paid = paidAmount || 0;
+      const remaining = invoiceTotal - paid;
+      const formattedDate = inv.date ? format(new Date(inv.date), "dd MMM yyyy") : "N/A";
 
-      return {
-        "Invoice Number": inv.invoiceNo || "N/A",
-        "Date": inv.date ? format(new Date(inv.date), "dd MMM yyyy") : "N/A",
-        "Business Category": inv.business || "N/A",
-        "Customer Name": inv.customerName || "N/A",
-        "Mobile Number": inv.phoneNumber || "N/A",
-        "Service Details": serviceDetails || "No items",
-        "Total Amount": inv.totalAmount || 0,
-        "Paid Amount": paidAmount || 0,
-        "Remaining Balance": (inv.totalAmount || 0) - (paidAmount || 0),
-        "Payment Status": status
-      };
+      const items = inv.items && inv.items.length > 0 ? inv.items : [null];
+
+      items.forEach((item, idx) => {
+        excelData.push({
+          "Invoice Number": idx === 0 ? (inv.invoiceNo || "N/A") : "",
+          "Date": idx === 0 ? formattedDate : "",
+          "Business Category": idx === 0 ? (inv.business || "N/A") : "",
+          "Customer Name": idx === 0 ? (inv.customerName || "N/A") : "",
+          "Mobile Number": idx === 0 ? (inv.phoneNumber || "N/A") : "",
+          "Item Type": item ? (item.type || "Service") : "",
+          "Item Name": item ? (item.name || "") : "No items",
+          "HSN Code": item ? (item.hsnCode || "-") : "-",
+          "Category": item ? (item.category || "-") : "-",
+          "Warranty": item ? (item.warranty || "-") : "-",
+          "Quantity": item ? (item.quantity ?? 1) : "",
+          "Unit Price (₹)": item ? (item.price || 0) : "",
+          "Invoice Total (₹)": idx === 0 ? invoiceTotal : "",
+          "Paid Amount (₹)": idx === 0 ? paid : "",
+          "Remaining Balance (₹)": idx === 0 ? remaining : "",
+          "Payment Status": idx === 0 ? status : "",
+        });
+      });
     });
 
     console.log("Mapped Excel data sample:", excelData[0]);
 
     try {
-      // Create worksheet from JSON
       const worksheet = XLSX.utils.json_to_sheet(excelData);
-      
-      // Explicitly set column widths to something reasonable to avoid "invisible" columns
-      // Using a fixed minimum width of 15 and max of 50
-      const headers = Object.keys(excelData[0]);
-      worksheet["!cols"] = headers.map(() => ({ wch: 20 })); 
+
+      const colWidths = [18, 14, 18, 20, 16, 12, 30, 12, 20, 20, 10, 16, 18, 14, 20, 16];
+      worksheet["!cols"] = colWidths.map(wch => ({ wch }));
 
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Invoices");
