@@ -58,6 +58,8 @@ function HsnCombobox({ value, onChange, idx }: { value: string; onChange: (v: st
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState(value);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const triggerRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { setSearch(value); }, [value]);
   useEffect(() => {
@@ -68,6 +70,14 @@ function HsnCombobox({ value, onChange, idx }: { value: string; onChange: (v: st
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
+  const openDropdown = () => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: Math.max(320, rect.width) });
+    }
+    setOpen(true);
+  };
+
   const filtered = HSN_CODES.filter(h =>
     h.code.includes(search) || h.description.toLowerCase().includes(search.toLowerCase())
   );
@@ -75,15 +85,19 @@ function HsnCombobox({ value, onChange, idx }: { value: string; onChange: (v: st
   return (
     <div ref={wrapRef} className="relative">
       <Input
+        ref={triggerRef}
         data-testid={`input-hsn-${idx}`}
         className="h-8 text-xs"
         placeholder="HSN code (search or type)..."
         value={search}
-        onFocus={() => setOpen(true)}
-        onChange={e => { setSearch(e.target.value); onChange(e.target.value); setOpen(true); }}
+        onFocus={openDropdown}
+        onChange={e => { setSearch(e.target.value); onChange(e.target.value); openDropdown(); }}
       />
-      {open && filtered.length > 0 && (
-        <div className="absolute z-50 top-full mt-1 left-0 w-80 bg-popover border border-border rounded-lg shadow-xl max-h-52 overflow-y-auto">
+      {open && filtered.length > 0 && dropPos && (
+        <div
+          className="fixed z-[9999] bg-popover border border-border rounded-lg shadow-2xl max-h-52 overflow-y-auto"
+          style={{ top: dropPos.top, left: dropPos.left, width: dropPos.width }}
+        >
           {filtered.map(h => (
             <button
               key={h.code}
@@ -97,6 +111,114 @@ function HsnCombobox({ value, onChange, idx }: { value: string; onChange: (v: st
               </div>
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Searchable Item Select (for PPF brands / accessory categories & items) ────
+interface SearchableItemSelectProps {
+  value: string;
+  onValueChange: (v: string) => void;
+  options: string[];
+  placeholder: string;
+  onAddNew?: () => void;
+  addNewLabel?: string;
+  disabled?: boolean;
+  testId?: string;
+}
+
+function SearchableItemSelect({ value, onValueChange, options, placeholder, onAddNew, addNewLabel = "Add new", disabled, testId }: SearchableItemSelectProps) {
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) { setOpen(false); setSearch(""); }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const openDropdown = () => {
+    if (disabled) return;
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width });
+    }
+    setOpen(true);
+  };
+
+  const filtered = options.filter(o => o.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <div ref={wrapRef} className="relative flex-1 min-w-0">
+      <button
+        ref={triggerRef}
+        type="button"
+        data-testid={testId}
+        disabled={disabled}
+        onClick={openDropdown}
+        className={`flex h-8 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-1 text-xs shadow-sm transition-colors focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 ${disabled ? "opacity-50" : "hover:bg-muted/30"}`}
+      >
+        <span className={value ? "text-foreground truncate" : "text-muted-foreground"}>{value || placeholder}</span>
+        <ChevronDown className="h-3.5 w-3.5 opacity-50 flex-shrink-0 ml-1" />
+      </button>
+
+      {open && dropPos && (
+        <div
+          className="fixed z-[9999] bg-popover border border-border rounded-lg shadow-2xl flex flex-col"
+          style={{ top: dropPos.top, left: dropPos.left, width: Math.max(200, dropPos.width) }}
+        >
+          {/* Search */}
+          <div className="p-2 border-b border-border/50">
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+              <input
+                autoFocus
+                className="w-full h-7 pl-7 pr-2 text-xs bg-muted/40 rounded-md border border-border/50 focus:outline-none focus:ring-1 focus:ring-ring placeholder:text-muted-foreground/60"
+                placeholder="Search..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Options — first 5 visible, scrollable */}
+          <div className="overflow-y-auto" style={{ maxHeight: "160px" }}>
+            {filtered.length === 0 ? (
+              <div className="px-3 py-3 text-xs text-muted-foreground text-center">No results</div>
+            ) : (
+              filtered.map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  className={`w-full text-left px-3 py-2 text-xs hover:bg-muted/60 transition-colors ${value === opt ? "bg-primary/10 text-primary font-medium" : "text-foreground"}`}
+                  onMouseDown={e => { e.preventDefault(); onValueChange(opt); setOpen(false); setSearch(""); }}
+                >
+                  {opt}
+                </button>
+              ))
+            )}
+          </div>
+
+          {/* Add new section */}
+          {onAddNew && (
+            <div className="border-t border-border/50">
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-xs text-primary font-medium hover:bg-primary/5 transition-colors flex items-center gap-1.5"
+                onMouseDown={e => { e.preventDefault(); onAddNew(); setOpen(false); setSearch(""); }}
+              >
+                <Plus className="h-3 w-3" />
+                {addNewLabel}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -234,7 +356,7 @@ function ItemRow({ idx, item, ppfMasters, accessories, categories, vehicleTypes,
   };
 
   return (
-    <div className="rounded-lg border border-border/60 bg-card space-y-0 overflow-hidden mb-2 last:mb-0">
+    <div className="rounded-lg border border-border/60 bg-card space-y-0 mb-2 last:mb-0">
       {/* Row 1: Type badge + full-width item name + delete */}
       <div className="flex items-start gap-2 p-3 pb-2">
         <Select
@@ -251,10 +373,10 @@ function ItemRow({ idx, item, ppfMasters, accessories, categories, vehicleTypes,
         </Select>
 
         {/* Item name — full width */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 flex gap-2">
           {item.itemType === "PPF" && (
             isNewPPF ? (
-              <div className="flex gap-1.5">
+              <div className="flex gap-1.5 flex-1">
                 <Input data-testid={`input-new-ppf-name-${idx}`} className="h-8 text-xs flex-1"
                   placeholder="New PPF brand name..." value={item.name} autoFocus
                   onChange={e => onChange(idx, { ...item, name: e.target.value })} />
@@ -264,58 +386,51 @@ function ItemRow({ idx, item, ppfMasters, accessories, categories, vehicleTypes,
                 </button>
               </div>
             ) : (
-              <Select value={item.name} onValueChange={handlePPFSelect}>
-                <SelectTrigger data-testid={`select-ppf-brand-${idx}`} className="h-8 text-xs w-full">
-                  <SelectValue placeholder="Select PPF brand..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {ppfMasters.map(p => <SelectItem key={p.id} value={p.name}>{p.name}</SelectItem>)}
-                  <SelectItem value={NEW_PPF_VALUE} className="text-primary font-medium">
-                    <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> Add new brand</span>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+              <SearchableItemSelect
+                testId={`select-ppf-brand-${idx}`}
+                value={item.name}
+                onValueChange={val => handlePPFSelect(val)}
+                options={ppfMasters.map(p => p.name)}
+                placeholder="Select PPF brand..."
+                onAddNew={() => handlePPFSelect(NEW_PPF_VALUE)}
+                addNewLabel="Add new brand"
+              />
             )
           )}
           {item.itemType === "Accessory" && (
-            <div className="flex gap-2">
+            <>
               {isNewCategory ? (
                 <Input data-testid={`input-new-category-${idx}`} className="h-8 text-xs flex-1"
                   placeholder="New category name..." value={item.categoryName} autoFocus
                   onChange={e => onChange(idx, { ...item, categoryName: e.target.value })} />
               ) : (
-                <Select value={item.categoryName} onValueChange={handleCategorySelect}>
-                  <SelectTrigger data-testid={`select-category-${idx}`} className="h-8 text-xs flex-1">
-                    <SelectValue placeholder="Category..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map(c => <SelectItem key={c.id} value={c.name}>{c.name}</SelectItem>)}
-                    <SelectItem value={NEW_CATEGORY_VALUE} className="text-primary font-medium">
-                      <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> New category</span>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <SearchableItemSelect
+                  testId={`select-category-${idx}`}
+                  value={item.categoryName || ""}
+                  onValueChange={val => handleCategorySelect(val)}
+                  options={categories.map(c => c.name)}
+                  placeholder="Category..."
+                  onAddNew={() => handleCategorySelect(NEW_CATEGORY_VALUE)}
+                  addNewLabel="New category"
+                />
               )}
               {isNewAccessory || isNewCategory ? (
                 <Input data-testid={`input-new-accessory-name-${idx}`} className="h-8 text-xs flex-1"
                   placeholder="Accessory name..." value={item.name}
                   onChange={e => onChange(idx, { ...item, name: e.target.value })} />
               ) : (
-                <Select value={item.name} onValueChange={handleAccessorySelect} disabled={!item.categoryName}>
-                  <SelectTrigger data-testid={`select-acc-item-${idx}`} className="h-8 text-xs flex-1">
-                    <SelectValue placeholder={item.categoryName ? "Item..." : "Pick category first"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {filteredAccessories.map(a => <SelectItem key={a.id} value={a.name}>{a.name}</SelectItem>)}
-                    {item.categoryName && (
-                      <SelectItem value={NEW_ACCESSORY_VALUE} className="text-primary font-medium">
-                        <span className="flex items-center gap-1"><Plus className="h-3 w-3" /> New item</span>
-                      </SelectItem>
-                    )}
-                  </SelectContent>
-                </Select>
+                <SearchableItemSelect
+                  testId={`select-acc-item-${idx}`}
+                  value={item.name}
+                  onValueChange={val => handleAccessorySelect(val)}
+                  options={filteredAccessories.map(a => a.name)}
+                  placeholder={item.categoryName ? "Item..." : "Pick category first"}
+                  disabled={!item.categoryName}
+                  onAddNew={item.categoryName ? () => handleAccessorySelect(NEW_ACCESSORY_VALUE) : undefined}
+                  addNewLabel="New item"
+                />
               )}
-            </div>
+            </>
           )}
         </div>
 
@@ -337,7 +452,7 @@ function ItemRow({ idx, item, ppfMasters, accessories, categories, vehicleTypes,
 
       {/* Row 2: Data fields with inline column labels */}
       <div className="border-t border-border/40 bg-muted/20 px-3 py-2.5">
-        <div className="grid grid-cols-[1fr_68px_76px_100px_100px_80px] gap-3 mb-1">
+        <div className="grid grid-cols-[1fr_60px_72px_100px_100px_90px] gap-2 mb-1">
           <span className="text-[10px] font-medium text-muted-foreground">HSN Code</span>
           <span className="text-[10px] font-medium text-muted-foreground text-center">Qty</span>
           <span className="text-[10px] font-medium text-muted-foreground">Unit</span>
@@ -345,7 +460,7 @@ function ItemRow({ idx, item, ppfMasters, accessories, categories, vehicleTypes,
           <span className="text-[10px] font-medium text-muted-foreground">Sell Price (₹)</span>
           <span className="text-[10px] font-medium text-muted-foreground text-right">Amount</span>
         </div>
-        <div className="grid grid-cols-[1fr_68px_76px_100px_100px_80px] gap-3 items-center">
+        <div className="grid grid-cols-[1fr_60px_72px_100px_100px_90px] gap-2 items-center">
           <HsnCombobox value={(item as any).hsnCode || ""} onChange={v => onChange(idx, { ...item, hsnCode: v })} idx={idx} />
           <Input data-testid={`input-item-qty-${idx}`} className="h-8 text-xs text-center"
             type="number" min={0} placeholder="Qty" value={item.quantity}
@@ -363,13 +478,18 @@ function ItemRow({ idx, item, ppfMasters, accessories, categories, vehicleTypes,
           <Input data-testid={`input-item-price-${idx}`} className="h-8 text-xs"
             type="number" min={0} placeholder="0" value={item.unitPrice}
             onChange={e => onChange(idx, { ...item, unitPrice: Number(e.target.value) })} />
-          <Input data-testid={`input-item-selling-price-${idx}`} className="h-8 text-xs"
+          <Input data-testid={`input-item-selling-price-${idx}`} className="h-8 text-xs border-emerald-500/50 focus:border-emerald-500"
             type="number" min={0} placeholder="0"
             value={(item as any).sellingPrice ?? 0}
             onChange={e => onChange(idx, { ...item, sellingPrice: Number(e.target.value) })} />
-          <span className="text-sm font-bold text-primary whitespace-nowrap text-right">
-            {formatCurrency(item.quantity * item.unitPrice)}
-          </span>
+          <div className="text-right">
+            <div className="text-[10px] text-muted-foreground whitespace-nowrap">
+              Cost: {formatCurrency(item.quantity * (item.unitPrice || 0))}
+            </div>
+            <div className="text-xs font-bold text-emerald-600 whitespace-nowrap">
+              Sell: {formatCurrency(item.quantity * ((item as any).sellingPrice || 0))}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -454,6 +574,7 @@ function PurchaseForm({ vendorId, vendorName, purchase, onClose }: PurchaseFormP
   const updateItem = (idx: number, updated: any) => setItems(prev => prev.map((item, i) => i === idx ? updated : item));
 
   const total = items.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.unitPrice) || 0), 0);
+  const sellingTotal = items.reduce((sum, i) => sum + (Number(i.quantity) || 0) * (Number(i.sellingPrice) || 0), 0);
 
   const invalidateMasters = () => {
     queryClient.invalidateQueries({ queryKey: ["/api/masters/ppf"] });
@@ -496,6 +617,7 @@ function PurchaseForm({ vendorId, vendorName, purchase, onClose }: PurchaseFormP
       receivedDate,
       notes,
       totalAmount: total,
+      sellingTotal,
     };
     if (purchase) updateMutation.mutate(payload); else createMutation.mutate(payload);
   };
@@ -534,7 +656,16 @@ function PurchaseForm({ vendorId, vendorName, purchase, onClose }: PurchaseFormP
 
         <div className="flex justify-between items-center pt-2 border-t border-border/60">
           <span className="text-sm text-muted-foreground">{items.filter(i => i.name).length} item(s)</span>
-          <span className="text-base font-bold text-primary">Total: {formatCurrency(total)}</span>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-[10px] text-muted-foreground">Purchase Cost</p>
+              <p className="text-sm font-semibold text-foreground">{formatCurrency(total)}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-[10px] text-muted-foreground">Selling Total</p>
+              <p className="text-base font-bold text-emerald-600">{formatCurrency(sellingTotal)}</p>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -968,9 +1099,17 @@ function VendorDetailView({ vendor, purchases, onBack, onEdit, onDelete, onAddPu
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Vendor</p>
                   <p className="font-semibold text-foreground">{vendor.name}</p>
                 </div>
-                <div className="space-y-0.5">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total Amount</p>
-                  <p className="font-bold text-primary text-base">{formatCurrency(viewingPurchase.totalAmount)}</p>
+                <div className="col-span-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-lg bg-muted/40 px-3 py-2">
+                      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Purchase Cost</p>
+                      <p className="font-bold text-foreground text-base mt-0.5">{formatCurrency(viewingPurchase.totalAmount)}</p>
+                    </div>
+                    <div className="rounded-lg bg-emerald-50 dark:bg-emerald-950/20 px-3 py-2">
+                      <p className="text-xs text-emerald-700 dark:text-emerald-400 font-medium uppercase tracking-wide">Selling Total</p>
+                      <p className="font-bold text-emerald-600 text-base mt-0.5">{formatCurrency((viewingPurchase as any).sellingTotal || 0)}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -981,11 +1120,11 @@ function VendorDetailView({ vendor, purchases, onBack, onEdit, onDelete, onAddPu
                   <table className="w-full text-sm">
                     <thead className="bg-muted/50 border-b border-border/40">
                       <tr>
-                        <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Item</th>
+                        <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Item & HSN</th>
                         <th className="text-center px-3 py-2 text-xs font-medium text-muted-foreground">Qty</th>
                         <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Unit Price</th>
-                        <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Sell Price</th>
-                        <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Total</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground text-emerald-600">Sell Price</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Cost / Sell</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/30">
@@ -1004,29 +1143,37 @@ function VendorDetailView({ vendor, purchases, onBack, onEdit, onDelete, onAddPu
                                 {item.rollName && <span className="text-muted-foreground">({item.rollName})</span>}
                               </div>
                               {item.hsnCode && (
-                                <span className="inline-block mt-0.5 text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">
-                                  HSN: {item.hsnCode}
+                                <span className="inline-flex items-center mt-1 text-[10px] font-mono bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/30 px-1.5 py-0.5 rounded text-amber-700 dark:text-amber-400 font-semibold">
+                                  HSN {item.hsnCode}
                                 </span>
                               )}
                             </div>
                           </td>
                           <td className="px-3 py-2 text-center text-muted-foreground whitespace-nowrap">{item.quantity} {item.unit}</td>
-                          <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">{formatCurrency(item.unitPrice)}</td>
+                          <td className="px-3 py-2 text-right text-muted-foreground whitespace-nowrap">{formatCurrency(item.unitPrice || 0)}</td>
                           <td className="px-3 py-2 text-right whitespace-nowrap">
                             {item.sellingPrice ? (
-                              <span className="font-medium text-emerald-600">{formatCurrency(item.sellingPrice)}</span>
+                              <span className="font-semibold text-emerald-600">{formatCurrency(item.sellingPrice)}</span>
                             ) : (
                               <span className="text-muted-foreground/40">—</span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-right font-semibold text-foreground whitespace-nowrap">{formatCurrency(item.quantity * item.unitPrice)}</td>
+                          <td className="px-3 py-2 text-right whitespace-nowrap">
+                            <div className="text-[10px] text-muted-foreground">{formatCurrency(item.quantity * (item.unitPrice || 0))}</div>
+                            {item.sellingPrice > 0 && (
+                              <div className="text-xs font-bold text-emerald-600">{formatCurrency(item.quantity * item.sellingPrice)}</div>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                     <tfoot className="bg-muted/30 border-t border-border/40">
                       <tr>
-                        <td colSpan={4} className="px-3 py-2 text-xs font-medium text-muted-foreground">Total</td>
-                        <td className="px-3 py-2 text-right text-sm font-bold text-primary">{formatCurrency(viewingPurchase.totalAmount)}</td>
+                        <td colSpan={3} className="px-3 py-2 text-xs font-medium text-muted-foreground">Total</td>
+                        <td className="px-3 py-2 text-right text-xs font-bold text-emerald-600 whitespace-nowrap">
+                          {(viewingPurchase as any).sellingTotal ? formatCurrency((viewingPurchase as any).sellingTotal) : "—"}
+                        </td>
+                        <td className="px-3 py-2 text-right text-sm font-bold text-primary whitespace-nowrap">{formatCurrency(viewingPurchase.totalAmount)}</td>
                       </tr>
                     </tfoot>
                   </table>
@@ -1401,7 +1548,10 @@ export default function VendorManagementPage() {
                           </p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-primary">{formatCurrency(p.totalAmount)}</span>
+                          <div className="text-right">
+                            <p className="text-[10px] text-muted-foreground">Cost / Sell</p>
+                            <p className="text-xs text-muted-foreground">{formatCurrency(p.totalAmount)} <span className="text-emerald-600 font-bold">/ {formatCurrency((p as any).sellingTotal || 0)}</span></p>
+                          </div>
                           {vendor && (
                             <Button data-testid={`button-edit-purchase-tab-${p.id}`} size="icon" variant="ghost" className="h-7 w-7"
                               onClick={() => setPurchaseView({ vendor, purchase: p })}>
@@ -1418,14 +1568,17 @@ export default function VendorManagementPage() {
                       <div className="space-y-1 border-t border-border/40 pt-2">
                         {p.items.map((item: any, i: number) => (
                           <div key={i} className="flex items-center justify-between text-xs">
-                            <span className="flex items-center gap-1 text-muted-foreground">
+                            <span className="flex items-center gap-1.5 text-muted-foreground flex-wrap">
                               {item.itemType && <span className="text-primary font-medium text-[10px] bg-primary/10 px-1 rounded">{item.itemType}</span>}
                               {item.categoryName && item.categoryName !== "PPF" && <span>{item.categoryName} › </span>}
-                              <span>{item.name}</span>
+                              <span className="text-foreground font-medium">{item.name}</span>
                               <span className="text-muted-foreground/70">×{item.quantity} {item.unit}</span>
-                              {item.hsnCode && <span className="font-mono text-muted-foreground/50">#{item.hsnCode}</span>}
+                              {item.hsnCode && <span className="font-mono text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-1 rounded border border-amber-200/50">HSN {item.hsnCode}</span>}
                             </span>
-                            <span className="font-medium">{formatCurrency(item.quantity * item.unitPrice)}</span>
+                            <div className="text-right flex-shrink-0 ml-2">
+                              <p className="text-muted-foreground">{formatCurrency(item.quantity * (item.unitPrice || 0))}</p>
+                              {item.sellingPrice > 0 && <p className="text-emerald-600 font-semibold">{formatCurrency(item.quantity * item.sellingPrice)}</p>}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -1435,7 +1588,16 @@ export default function VendorManagementPage() {
                 })}
                 <div className="flex justify-between items-center pt-2 border-t border-border/60">
                   <span className="text-sm text-muted-foreground">{filteredPurchases.length} purchase{filteredPurchases.length !== 1 ? "s" : ""}</span>
-                  <span className="text-sm font-bold text-primary">Total: {formatCurrency(filteredTotal)}</span>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground">Purchase Cost</p>
+                      <p className="text-sm font-semibold text-foreground">{formatCurrency(filteredTotal)}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] text-muted-foreground">Selling Total</p>
+                      <p className="text-sm font-bold text-emerald-600">{formatCurrency(filteredPurchases.reduce((sum, p) => sum + ((p as any).sellingTotal || 0), 0))}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1446,7 +1608,7 @@ export default function VendorManagementPage() {
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground">Vendor</th>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground">Items</th>
                       <th className="text-left px-4 py-3 font-medium text-muted-foreground">Received</th>
-                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Amount</th>
+                      <th className="text-right px-4 py-3 font-medium text-muted-foreground">Cost / Sell</th>
                       <th className="px-4 py-3"></th>
                     </tr>
                   </thead>
@@ -1459,20 +1621,23 @@ export default function VendorManagementPage() {
                           <td className="px-4 py-3 text-muted-foreground">
                             <div className="space-y-0.5">
                               {p.items.map((item: any, i: number) => (
-                                <div key={i} className="flex items-center gap-1 text-xs">
+                                <div key={i} className="flex items-center gap-1.5 text-xs flex-wrap">
                                   {item.itemType && (
                                     <span className="text-primary font-medium text-[10px] bg-primary/10 px-1 rounded">{item.itemType}</span>
                                   )}
                                   {item.categoryName && item.categoryName !== "PPF" && <span>{item.categoryName} › </span>}
                                   <span>{item.name}</span>
                                   <span>×{item.quantity} {item.unit}</span>
-                                  {item.hsnCode && <span className="font-mono text-muted-foreground/50">#{item.hsnCode}</span>}
+                                  {item.hsnCode && <span className="font-mono text-[10px] bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 px-1 rounded border border-amber-200/50">HSN {item.hsnCode}</span>}
                                 </div>
                               ))}
                             </div>
                           </td>
                           <td className="px-4 py-3 text-muted-foreground">{p.receivedDate ? formatDate(p.receivedDate) : "—"}</td>
-                          <td className="px-4 py-3 text-right font-semibold text-primary">{formatCurrency(p.totalAmount)}</td>
+                          <td className="px-4 py-3 text-right">
+                            <p className="text-sm text-muted-foreground">{formatCurrency(p.totalAmount)}</p>
+                            <p className="text-sm font-bold text-emerald-600">{formatCurrency((p as any).sellingTotal || 0)}</p>
+                          </td>
                           <td className="px-4 py-3">
                             <div className="flex items-center justify-end gap-1">
                               {vendor && (
@@ -1497,7 +1662,10 @@ export default function VendorManagementPage() {
                       <td colSpan={3} className="px-4 py-3 text-sm font-medium text-muted-foreground">
                         {filteredPurchases.length} purchase{filteredPurchases.length !== 1 ? "s" : ""}
                       </td>
-                      <td colSpan={2} className="px-4 py-3 text-right font-bold text-primary">{formatCurrency(filteredTotal)}</td>
+                      <td colSpan={2} className="px-4 py-3 text-right">
+                        <p className="text-sm text-muted-foreground">Cost: {formatCurrency(filteredTotal)}</p>
+                        <p className="text-sm font-bold text-emerald-600">Sell: {formatCurrency(filteredPurchases.reduce((sum, p) => sum + ((p as any).sellingTotal || 0), 0))}</p>
+                      </td>
                     </tr>
                   </tfoot>
                 </table>
