@@ -944,7 +944,9 @@ function AddPPFForm({ onClose, vehicleTypes, initialData }: { onClose: () => voi
 
 function ManageRollsForm({ ppf, onClose }: { ppf: PPFMaster; onClose: () => void }) {
   const { toast } = useToast();
-  const [rolls, setRolls] = useState<any[]>(ppf.rolls || []);
+  const allRolls: any[] = ppf.rolls || [];
+  const usedRolls = allRolls.filter((r: any) => (r.stock || 0) <= 10);
+  const [activeRolls, setActiveRolls] = useState<any[]>(allRolls.filter((r: any) => (r.stock || 0) > 10));
   const [newRollName, setNewRollName] = useState("");
   const [newRollStock, setNewRollStock] = useState("");
 
@@ -959,21 +961,26 @@ function ManageRollsForm({ ppf, onClose }: { ppf: PPFMaster; onClose: () => void
 
   const addRoll = () => {
     if (!newRollName.trim()) return;
-    setRolls([...rolls, { name: newRollName.trim(), stock: parseInt(newRollStock) || 0 }]);
+    setActiveRolls([...activeRolls, { name: newRollName.trim(), stock: parseInt(newRollStock) || 0 }]);
     setNewRollName("");
     setNewRollStock("");
   };
 
   const updateRoll = (index: number, field: string, value: any) => {
-    const updated = [...rolls];
+    const updated = [...activeRolls];
     updated[index] = { ...updated[index], [field]: value };
-    setRolls(updated);
+    setActiveRolls(updated);
   };
 
   const removeRoll = (index: number) => {
-    const updated = [...rolls];
+    const updated = [...activeRolls];
     updated.splice(index, 1);
-    setRolls(updated);
+    setActiveRolls(updated);
+  };
+
+  const handleSave = () => {
+    const mergedRolls = [...activeRolls, ...usedRolls];
+    ppfMutation.mutate({ name: ppf.name, pricingByVehicleType: ppf.pricingByVehicleType, rolls: mergedRolls });
   };
 
   return (
@@ -1014,16 +1021,16 @@ function ManageRollsForm({ ppf, onClose }: { ppf: PPFMaster; onClose: () => void
           </div>
         </div>
 
-        {rolls.length === 0 ? (
+        {activeRolls.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
             <Layers className="h-8 w-8 mb-2 opacity-30" />
-            <p className="text-sm">No rolls added yet.</p>
-            <p className="text-xs mt-1">Use the form above to add your first roll.</p>
+            <p className="text-sm">No active rolls.</p>
+            <p className="text-xs mt-1">Use the form above to add a new roll.</p>
           </div>
         ) : (
           <div className="space-y-2">
-            <p className="text-xs font-semibold uppercase text-muted-foreground px-1">Existing Rolls ({rolls.length})</p>
-            {rolls.map((roll, index) => (
+            <p className="text-xs font-semibold uppercase text-muted-foreground px-1">Existing Rolls ({activeRolls.length})</p>
+            {activeRolls.map((roll, index) => (
               <div key={index} className="flex gap-2 items-center border rounded-lg px-3 py-2 bg-background">
                 <div className="flex-1">
                   <Input
@@ -1060,7 +1067,7 @@ function ManageRollsForm({ ppf, onClose }: { ppf: PPFMaster; onClose: () => void
 
       <div className="flex justify-end gap-3 pt-4 border-t mt-4 shrink-0">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={() => ppfMutation.mutate({ name: ppf.name, pricingByVehicleType: ppf.pricingByVehicleType, rolls })}>
+        <Button onClick={handleSave} disabled={ppfMutation.isPending}>
           Save Rolls
         </Button>
       </div>
