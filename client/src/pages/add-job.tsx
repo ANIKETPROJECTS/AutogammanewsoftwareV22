@@ -1559,7 +1559,15 @@ export default function AddJobPage() {
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
                   <div className="md:col-span-4 space-y-1.5">
                     <label className="text-xs font-bold text-muted-foreground uppercase">Service</label>
-                    <Select value={selectedService} onValueChange={setSelectedService}>
+                    <Select value={selectedService} onValueChange={(val) => {
+                      setSelectedService(val);
+                      const svc = services.find(s => s.id === val);
+                      if (svc && (svc as any).hsnCode) {
+                        setServiceHsn((svc as any).hsnCode);
+                      } else {
+                        setServiceHsn("");
+                      }
+                    }}>
                       <SelectTrigger className="h-11">
                         <SelectValue placeholder="Select Service" />
                       </SelectTrigger>

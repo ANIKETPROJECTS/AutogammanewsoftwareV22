@@ -226,8 +226,13 @@ export default function MastersPage() {
               {services.map((service) => (
                 <Card key={service.id}>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle className="text-lg">{service.name}</CardTitle>
-                    <div className="flex gap-1">
+                    <div className="min-w-0">
+                      <CardTitle className="text-lg">{service.name}</CardTitle>
+                      {(service as any).hsnCode && (
+                        <p className="text-xs text-muted-foreground mt-0.5">HSN: {(service as any).hsnCode}</p>
+                      )}
+                    </div>
+                    <div className="flex gap-1 flex-shrink-0">
                       <Button variant="ghost" size="icon" onClick={() => setEditingService(service)}>
                         <Edit2 className="h-4 w-4" />
                       </Button>
@@ -696,6 +701,7 @@ export default function MastersPage() {
 function AddServiceForm({ onClose, vehicleTypes, initialData }: { onClose: () => void, vehicleTypes: VehicleType[], initialData?: ServiceMaster }) {
   const { toast } = useToast();
   const [name, setName] = useState(initialData?.name || "");
+  const [hsnCode, setHsnCode] = useState((initialData as any)?.hsnCode || "");
   const [pricing, setPricing] = useState<any[]>(initialData?.pricingByVehicleType || []);
 
   const serviceMutation = useMutation({
@@ -725,9 +731,20 @@ function AddServiceForm({ onClose, vehicleTypes, initialData }: { onClose: () =>
 
   return (
     <div className="space-y-6 py-4">
-      <div className="space-y-2">
-        <Label>Service Name</Label>
-        <Input placeholder="e.g. Garware Glaze" value={name} onChange={(e) => setName(e.target.value)} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Service Name</Label>
+          <Input placeholder="e.g. Garware Glaze" value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div className="space-y-2">
+          <Label>HSN Code <span className="text-muted-foreground font-normal text-xs">(optional)</span></Label>
+          <Input
+            placeholder="e.g. 39199090"
+            value={hsnCode}
+            onChange={(e) => setHsnCode(e.target.value)}
+            data-testid="input-service-hsn"
+          />
+        </div>
       </div>
 
       <div className="space-y-4">
@@ -783,7 +800,7 @@ function AddServiceForm({ onClose, vehicleTypes, initialData }: { onClose: () =>
 
       <div className="flex justify-end gap-3 pt-4 border-t">
         <Button variant="outline" onClick={onClose}>Cancel</Button>
-        <Button onClick={() => serviceMutation.mutate({ name, pricingByVehicleType: pricing })}>
+        <Button onClick={() => serviceMutation.mutate({ name, hsnCode, pricingByVehicleType: pricing })}>
           {initialData ? "Update Service" : "Save Service"}
         </Button>
       </div>

@@ -71,6 +71,7 @@ export const vehiclePricingSchema = z.object({
 export const serviceMasterSchema = z.object({
   id: z.string().optional(),
   name: z.string(),
+  hsnCode: z.string().optional().default(""),
   pricingByVehicleType: z.array(vehiclePricingSchema),
 });
 
