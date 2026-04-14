@@ -592,6 +592,25 @@ app.use((req, res, next) => {
   });
 
   // Vendor Purchase Routes
+  // ─── Balance Invoices (dashboard detail view) ──────────────────────────────
+  app.get("/api/dashboard/balance-invoices", async (req, res) => {
+    if (!(req.session as any).userId) return res.status(401).send("Unauthorized");
+    try {
+      const invoices = await storage.getInvoices();
+      const balanceInvoices = invoices
+        .map(inv => {
+          const paid = (inv.payments || []).reduce((s: number, p: any) => s + (p.amount || 0), 0);
+          const balance = (inv.totalAmount || 0) - paid;
+          return { ...inv, paidAmount: paid, balanceAmount: balance };
+        })
+        .filter(inv => inv.balanceAmount > 0)
+        .sort((a, b) => b.balanceAmount - a.balanceAmount);
+      res.json(balanceInvoices);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message || "Internal server error" });
+    }
+  });
+
   app.get("/api/vendor-purchases", async (req, res) => {
     const vendorId = req.query.vendorId as string | undefined;
     const purchases = await storage.getVendorPurchases(vendorId);
