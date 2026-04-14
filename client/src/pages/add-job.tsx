@@ -336,7 +336,8 @@ export default function AddJobPage() {
           id: (s as any).serviceId || (s as any).id,
           name: s.name,
           price: s.price,
-          technician: s.technician
+          technician: s.technician,
+          hsnCode: (s as any).hsnCode || ""
         })),
         ppfs: (jobToEdit.ppfs || []).reduce((acc: any[], p: any) => {
           const ppfId = String((p as any).ppfId || (p as any).id || (p as any)._id);
@@ -406,7 +407,8 @@ export default function AddJobPage() {
                 rollName: p.rollName || "Unknown Roll",
                 rollUsed: p.rollUsed
               }] : []),
-              warranty
+              warranty,
+              hsnCode: p.hsnCode || ""
             });
           }
           return acc;
@@ -417,8 +419,10 @@ export default function AddJobPage() {
               accessoryId: String(accId),
               id: String(accId),
               name: a.name,
+              category: (a as any).category || "",
               price: a.price,
-              quantity: a.quantity || 1
+              quantity: a.quantity || 1,
+              hsnCode: (a as any).hsnCode || ""
             };
           }),
         laborCharge: jobToEdit.laborCharge || 0,
@@ -575,14 +579,18 @@ export default function AddJobPage() {
   useEffect(() => {
     if (selectedPPF) {
       const p = ppfMasters.find(m => m.id === selectedPPF);
-      if (p?.hsnCode) setPpfHsn(p.hsnCode);
+      setPpfHsn(p?.hsnCode || "");
+    } else {
+      setPpfHsn("");
     }
   }, [selectedPPF, ppfMasters]);
 
   useEffect(() => {
     if (selectedAccessory) {
       const a = accessories.find(m => m.id === selectedAccessory);
-      if (a?.hsnCode) setAccessoryHsn(a.hsnCode);
+      setAccessoryHsn(a?.hsnCode || "");
+    } else {
+      setAccessoryHsn("");
     }
   }, [selectedAccessory, accessories]);
 
