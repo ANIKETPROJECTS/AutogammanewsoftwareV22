@@ -656,10 +656,10 @@ export default function InvoicePage() {
               <span>Subtotal</span>
               <span style="font-weight: bold;">₹{invoice.subtotal.toLocaleString()}</span>
             </div>
-            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
-              <span>GST (${invoice.gstPercentage || 18}%)</span>
-              <span style="font-weight: bold;">₹${Math.round(invoice.subtotal - (invoice.subtotal / (1 + (invoice.gstPercentage || 18) / 100))).toLocaleString()}</span>
-            </div>
+            ${(invoice.gstPercentage || 0) > 0 ? `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e2e8f0;">
+              <span>GST (${invoice.gstPercentage}%)</span>
+              <span style="font-weight: bold;">₹${Math.round(invoice.subtotal - (invoice.subtotal / (1 + (invoice.gstPercentage || 0) / 100))).toLocaleString()}</span>
+            </div>` : ''}
             <div style="display: flex; justify-content: space-between; padding: 12px 0; font-size: 18px; font-weight: bold; color: #dc2626;">
               <span>TOTAL</span>
               <span>₹${invoice.subtotal.toLocaleString()}</span>

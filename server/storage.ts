@@ -1514,7 +1514,7 @@ export class MongoStorage implements IStorage {
             subtotal: itemsSubtotal,
             discount: discountAmount,
             laborCharge: bizLaborCharge,
-            gstPercentage: j.gst,
+            gstPercentage: gstRate,
             gstAmount,
             totalAmount,
             date: j.date,
