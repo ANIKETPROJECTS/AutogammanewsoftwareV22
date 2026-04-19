@@ -132,8 +132,7 @@ app.use((req, res, next) => {
       }
       const topServices = [...serviceMap.entries()]
         .map(([name, d]) => ({ name, count: d.count, revenue: d.revenue }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+        .sort((a, b) => b.count - a.count);
 
       // --- Most Selling PPFs ---
       const ppfMap = new Map<string, { count: number; revenue: number }>();
@@ -146,8 +145,7 @@ app.use((req, res, next) => {
       }
       const topPPFs = [...ppfMap.entries()]
         .map(([name, d]) => ({ name, count: d.count, revenue: d.revenue }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+        .sort((a, b) => b.count - a.count);
 
       // --- Most Selling Accessories ---
       const accessoryMap = new Map<string, { count: number; revenue: number; category: string }>();
@@ -161,8 +159,7 @@ app.use((req, res, next) => {
       }
       const topAccessories = [...accessoryMap.entries()]
         .map(([name, d]) => ({ name, count: d.count, revenue: d.revenue, category: d.category }))
-        .sort((a, b) => b.count - a.count)
-        .slice(0, 10);
+        .sort((a, b) => b.count - a.count);
 
       // --- Revenue by Category ---
       let serviceRevenue = 0, ppfRevenue = 0, accessoryRevenue = 0, laborRevenue = 0;
@@ -233,8 +230,7 @@ app.use((req, res, next) => {
       }
       const topTechnicians = [...techMap.entries()]
         .map(([name, d]) => ({ name, jobCount: d.jobCount, revenue: d.revenue }))
-        .sort((a, b) => b.revenue - a.revenue)
-        .slice(0, 8);
+        .sort((a, b) => b.revenue - a.revenue);
 
       // --- Summary Stats ---
       const totalRevenue = invoices.reduce((sum, inv) => sum + ((inv as any).totalAmount || 0), 0);
