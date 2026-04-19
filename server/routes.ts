@@ -108,6 +108,158 @@ app.use((req, res, next) => {
     }
   });
 
+  // Analytics Route
+  app.get("/api/analytics", async (req, res) => {
+    if (!(req.session as any).userId) {
+      return res.status(401).send("Unauthorized");
+    }
+    try {
+      const { JobCardModel, InvoiceModel } = await import("./storage");
+
+      const [jobCards, invoices] = await Promise.all([
+        JobCardModel.find({}).lean(),
+        InvoiceModel.find({}).lean(),
+      ]);
+
+      // --- Most Selling Services ---
+      const serviceMap = new Map<string, { count: number; revenue: number }>();
+      for (const jc of jobCards) {
+        for (const s of (jc as any).services || []) {
+          const key = s.name || "Unknown";
+          const prev = serviceMap.get(key) || { count: 0, revenue: 0 };
+          serviceMap.set(key, { count: prev.count + 1, revenue: prev.revenue + (s.price || 0) });
+        }
+      }
+      const topServices = [...serviceMap.entries()]
+        .map(([name, d]) => ({ name, count: d.count, revenue: d.revenue }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      // --- Most Selling PPFs ---
+      const ppfMap = new Map<string, { count: number; revenue: number }>();
+      for (const jc of jobCards) {
+        for (const p of (jc as any).ppfs || []) {
+          const key = p.name || "Unknown";
+          const prev = ppfMap.get(key) || { count: 0, revenue: 0 };
+          ppfMap.set(key, { count: prev.count + 1, revenue: prev.revenue + (p.price || 0) });
+        }
+      }
+      const topPPFs = [...ppfMap.entries()]
+        .map(([name, d]) => ({ name, count: d.count, revenue: d.revenue }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      // --- Most Selling Accessories ---
+      const accessoryMap = new Map<string, { count: number; revenue: number; category: string }>();
+      for (const jc of jobCards) {
+        for (const a of (jc as any).accessories || []) {
+          const key = a.name || "Unknown";
+          const qty = a.quantity || 1;
+          const prev = accessoryMap.get(key) || { count: 0, revenue: 0, category: a.category || "" };
+          accessoryMap.set(key, { count: prev.count + qty, revenue: prev.revenue + (a.price || 0) * qty, category: a.category || prev.category });
+        }
+      }
+      const topAccessories = [...accessoryMap.entries()]
+        .map(([name, d]) => ({ name, count: d.count, revenue: d.revenue, category: d.category }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10);
+
+      // --- Revenue by Category ---
+      let serviceRevenue = 0, ppfRevenue = 0, accessoryRevenue = 0, laborRevenue = 0;
+      for (const inv of invoices) {
+        for (const item of (inv as any).items || []) {
+          const amt = (item.price || 0) * (item.quantity || 1);
+          if (item.type === "Service") serviceRevenue += amt;
+          else if (item.type === "PPF") ppfRevenue += amt;
+          else if (item.type === "Accessory") accessoryRevenue += amt;
+          else if (item.type === "Labor") laborRevenue += amt;
+        }
+      }
+      const revenueByCategory = [
+        { name: "Services", value: serviceRevenue },
+        { name: "PPF", value: ppfRevenue },
+        { name: "Accessories", value: accessoryRevenue },
+        { name: "Labor", value: laborRevenue },
+      ];
+
+      // --- Revenue by Business ---
+      const businessMap = new Map<string, number>();
+      for (const inv of invoices) {
+        const biz = (inv as any).business || "Auto Gamma";
+        businessMap.set(biz, (businessMap.get(biz) || 0) + ((inv as any).totalAmount || 0));
+      }
+      const revenueByBusiness = [...businessMap.entries()].map(([name, value]) => ({ name, value }));
+
+      // --- Job Status Distribution ---
+      const statusMap = new Map<string, number>();
+      for (const jc of jobCards) {
+        const s = (jc as any).status || "Pending";
+        statusMap.set(s, (statusMap.get(s) || 0) + 1);
+      }
+      const jobStatusDistribution = [...statusMap.entries()].map(([name, value]) => ({ name, value }));
+
+      // --- Monthly Revenue (last 12 months from invoices) ---
+      const monthlyMap = new Map<string, number>();
+      for (const inv of invoices) {
+        const d = (inv as any).date;
+        if (!d) continue;
+        const dt = new Date(d);
+        if (isNaN(dt.getTime())) continue;
+        const key = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+        monthlyMap.set(key, (monthlyMap.get(key) || 0) + ((inv as any).totalAmount || 0));
+      }
+      const monthlyRevenue = [...monthlyMap.entries()]
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .slice(-12)
+        .map(([key, value]) => {
+          const [year, month] = key.split("-");
+          const d = new Date(Number(year), Number(month) - 1, 1);
+          return { name: d.toLocaleString("default", { month: "short", year: "2-digit" }), value };
+        });
+
+      // --- Top Technicians ---
+      const techMap = new Map<string, { jobCount: number; revenue: number }>();
+      for (const jc of jobCards) {
+        const allItems = [
+          ...((jc as any).services || []),
+          ...((jc as any).ppfs || []),
+        ];
+        for (const item of allItems) {
+          const tech = item.technician;
+          if (!tech) continue;
+          const prev = techMap.get(tech) || { jobCount: 0, revenue: 0 };
+          techMap.set(tech, { jobCount: prev.jobCount + 1, revenue: prev.revenue + (item.price || 0) });
+        }
+      }
+      const topTechnicians = [...techMap.entries()]
+        .map(([name, d]) => ({ name, jobCount: d.jobCount, revenue: d.revenue }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 8);
+
+      // --- Summary Stats ---
+      const totalRevenue = invoices.reduce((sum, inv) => sum + ((inv as any).totalAmount || 0), 0);
+      const totalJobs = jobCards.length;
+      const completedJobs = jobCards.filter((jc) => (jc as any).status === "Completed").length;
+      const paidInvoices = invoices.filter((inv) => (inv as any).isPaid).length;
+      const totalInvoices = invoices.length;
+
+      res.json({
+        summary: { totalRevenue, totalJobs, completedJobs, paidInvoices, totalInvoices },
+        topServices,
+        topPPFs,
+        topAccessories,
+        revenueByCategory,
+        revenueByBusiness,
+        jobStatusDistribution,
+        monthlyRevenue,
+        topTechnicians,
+      });
+    } catch (error: any) {
+      console.error("Error fetching analytics:", error);
+      res.status(500).json({ message: error.message || "Internal server error" });
+    }
+  });
+
   // Dashboard Route
   app.get("/api/dashboard", async (req, res) => {
     if (!(req.session as any).userId) {
