@@ -139,9 +139,9 @@ app.use((req, res, next) => {
       const ppfMap = new Map<string, { count: number; revenue: number }>();
       for (const jc of jobCards) {
         for (const p of (jc as any).ppfs || []) {
-          const key = p.name || "Unknown";
-          const prev = ppfMap.get(key) || { count: 0, revenue: 0 };
-          ppfMap.set(key, { count: prev.count + 1, revenue: prev.revenue + (p.price || 0) });
+          const rawName = (p.name || "Unknown").split("\n")[0].trim();
+          const prev = ppfMap.get(rawName) || { count: 0, revenue: 0 };
+          ppfMap.set(rawName, { count: prev.count + 1, revenue: prev.revenue + (p.price || 0) });
         }
       }
       const topPPFs = [...ppfMap.entries()]

@@ -4,41 +4,27 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  LineChart,
-  Line,
-  CartesianGrid,
-} from "recharts";
-import {
-  TrendingUp,
-  Wrench,
-  ShieldCheck,
-  Package,
   IndianRupee,
   ClipboardList,
   CheckCircle2,
   Receipt,
+  Wrench,
+  ShieldCheck,
+  Package,
   Users,
+  TrendingUp,
+  Building2,
+  Calendar,
 } from "lucide-react";
 
-const COLORS = ["#e53e3e", "#3182ce", "#38a169", "#d69e2e", "#805ad5", "#dd6b20", "#319795", "#e53e3e"];
-
 function formatCurrency(val: number) {
-  if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+  if (val >= 10000000) return `₹${(val / 10000000).toFixed(2)} Cr`;
+  if (val >= 100000) return `₹${(val / 100000).toFixed(2)} L`;
   if (val >= 1000) return `₹${(val / 1000).toFixed(1)}K`;
-  return `₹${val.toFixed(0)}`;
+  return `₹${val.toLocaleString("en-IN")}`;
 }
 
-function StatCard({
+function SummaryCard({
   icon: Icon,
   label,
   value,
@@ -57,7 +43,7 @@ function StatCard({
         <div className="flex items-start justify-between">
           <div>
             <p className="text-sm text-muted-foreground font-medium">{label}</p>
-            <p className="text-2xl font-bold mt-1" data-testid={`stat-value-${label}`}>{value}</p>
+            <p className="text-2xl font-bold mt-1" data-testid={`stat-${label}`}>{value}</p>
             {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>}
           </div>
           <div className={`p-2.5 rounded-lg ${color}`}>
@@ -69,55 +55,64 @@ function StatCard({
   );
 }
 
-function TopItemsTable({
+function SectionTable({
   title,
-  items,
   icon: Icon,
+  columns,
+  rows,
+  emptyMsg,
 }: {
   title: string;
-  items: { name: string; count: number; revenue: number; category?: string }[];
   icon: React.ElementType;
+  columns: { key: string; label: string; align?: "left" | "right" | "center" }[];
+  rows: Record<string, any>[];
+  emptyMsg?: string;
 }) {
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 border-b border-border">
         <CardTitle className="flex items-center gap-2 text-base">
           <Icon className="h-4 w-4 text-primary" />
           {title}
         </CardTitle>
       </CardHeader>
       <CardContent className="p-0">
-        {items.length === 0 ? (
-          <p className="text-sm text-muted-foreground px-6 pb-4">No data available</p>
+        {rows.length === 0 ? (
+          <p className="text-sm text-muted-foreground px-6 py-5">{emptyMsg || "No data available"}</p>
         ) : (
-          <div className="divide-y divide-border">
-            {items.map((item, i) => (
-              <div
-                key={item.name}
-                className="flex items-center justify-between px-6 py-3 hover:bg-muted/40 transition-colors"
-                data-testid={`top-item-row-${i}`}
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="text-xs font-bold text-muted-foreground w-5 shrink-0">
-                    #{i + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{item.name}</p>
-                    {item.category && (
-                      <p className="text-xs text-muted-foreground">{item.category}</p>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 shrink-0 ml-4">
-                  <Badge variant="secondary" className="text-xs">
-                    {item.count} sold
-                  </Badge>
-                  <span className="text-sm font-semibold text-green-600 w-20 text-right">
-                    {formatCurrency(item.revenue)}
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/30">
+                  {columns.map((col) => (
+                    <th
+                      key={col.key}
+                      className={`px-4 py-2.5 font-medium text-muted-foreground text-${col.align || "left"} whitespace-nowrap`}
+                    >
+                      {col.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {rows.map((row, i) => (
+                  <tr
+                    key={i}
+                    className="hover:bg-muted/30 transition-colors"
+                    data-testid={`table-row-${i}`}
+                  >
+                    {columns.map((col) => (
+                      <td
+                        key={col.key}
+                        className={`px-4 py-3 text-${col.align || "left"} align-middle`}
+                      >
+                        {row[col.key]}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </CardContent>
@@ -125,26 +120,162 @@ function TopItemsTable({
   );
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (active && payload && payload.length) {
-    return (
-      <div className="bg-white border border-border rounded-lg shadow-md px-3 py-2 text-sm">
-        <p className="font-medium mb-1">{label}</p>
-        {payload.map((p: any) => (
-          <p key={p.name} style={{ color: p.color }}>
-            {p.name === "revenue" ? formatCurrency(p.value) : p.value}
-          </p>
-        ))}
-      </div>
-    );
-  }
-  return null;
-};
+function TableSkeleton() {
+  return (
+    <Card>
+      <CardHeader className="pb-3 border-b border-border">
+        <Skeleton className="h-5 w-40" />
+      </CardHeader>
+      <CardContent className="p-4 space-y-2">
+        {[...Array(5)].map((_, i) => <Skeleton key={i} className="h-9 w-full" />)}
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function AnalyticsPage() {
   const { data, isLoading } = useQuery<any>({
     queryKey: ["/api/analytics"],
   });
+
+  const summary = data?.summary || {};
+  const completionRate = summary.totalJobs
+    ? Math.round((summary.completedJobs / summary.totalJobs) * 100)
+    : 0;
+  const paidRate = summary.totalInvoices
+    ? Math.round((summary.paidInvoices / summary.totalInvoices) * 100)
+    : 0;
+
+  // Services table rows
+  const serviceRows = (data?.topServices || []).map((s: any, i: number) => ({
+    rank: <span className="font-bold text-muted-foreground">#{i + 1}</span>,
+    name: <span className="font-medium">{s.name}</span>,
+    count: (
+      <Badge variant="secondary" data-testid={`service-count-${i}`}>
+        {s.count} job{s.count !== 1 ? "s" : ""}
+      </Badge>
+    ),
+    revenue: <span className="font-semibold text-green-600">{formatCurrency(s.revenue)}</span>,
+    avg: <span className="text-muted-foreground">{formatCurrency(s.count > 0 ? s.revenue / s.count : 0)}</span>,
+  }));
+
+  // PPF table rows
+  const ppfRows = (data?.topPPFs || []).map((p: any, i: number) => ({
+    rank: <span className="font-bold text-muted-foreground">#{i + 1}</span>,
+    name: <span className="font-medium">{p.name}</span>,
+    count: (
+      <Badge variant="secondary">
+        {p.count} job{p.count !== 1 ? "s" : ""}
+      </Badge>
+    ),
+    revenue: <span className="font-semibold text-green-600">{formatCurrency(p.revenue)}</span>,
+    avg: <span className="text-muted-foreground">{formatCurrency(p.count > 0 ? p.revenue / p.count : 0)}</span>,
+  }));
+
+  // Accessories table rows
+  const accessoryRows = (data?.topAccessories || []).map((a: any, i: number) => ({
+    rank: <span className="font-bold text-muted-foreground">#{i + 1}</span>,
+    name: <span className="font-medium">{a.name}</span>,
+    category: <span className="text-muted-foreground text-xs">{a.category || "—"}</span>,
+    qty: (
+      <Badge variant="secondary">
+        {a.count} unit{a.count !== 1 ? "s" : ""}
+      </Badge>
+    ),
+    revenue: <span className="font-semibold text-green-600">{formatCurrency(a.revenue)}</span>,
+  }));
+
+  // Revenue by category rows
+  const totalCatRevenue = (data?.revenueByCategory || []).reduce((s: number, c: any) => s + c.value, 0);
+  const categoryRows = (data?.revenueByCategory || [])
+    .filter((c: any) => c.value > 0)
+    .sort((a: any, b: any) => b.value - a.value)
+    .map((c: any) => ({
+      category: <span className="font-medium">{c.name}</span>,
+      revenue: <span className="font-semibold text-green-600">{formatCurrency(c.value)}</span>,
+      share: (
+        <div className="flex items-center gap-2">
+          <div className="w-24 bg-muted rounded-full h-1.5 overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full"
+              style={{ width: `${totalCatRevenue > 0 ? (c.value / totalCatRevenue) * 100 : 0}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {totalCatRevenue > 0 ? ((c.value / totalCatRevenue) * 100).toFixed(1) : 0}%
+          </span>
+        </div>
+      ),
+    }));
+
+  // Revenue by business rows
+  const totalBizRevenue = (data?.revenueByBusiness || []).reduce((s: number, b: any) => s + b.value, 0);
+  const businessRows = (data?.revenueByBusiness || [])
+    .sort((a: any, b: any) => b.value - a.value)
+    .map((b: any) => ({
+      business: <span className="font-medium">{b.name}</span>,
+      revenue: <span className="font-semibold text-green-600">{formatCurrency(b.value)}</span>,
+      share: (
+        <div className="flex items-center gap-2">
+          <div className="w-24 bg-muted rounded-full h-1.5 overflow-hidden">
+            <div
+              className="h-full bg-blue-500 rounded-full"
+              style={{ width: `${totalBizRevenue > 0 ? (b.value / totalBizRevenue) * 100 : 0}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {totalBizRevenue > 0 ? ((b.value / totalBizRevenue) * 100).toFixed(1) : 0}%
+          </span>
+        </div>
+      ),
+    }));
+
+  // Job status rows
+  const totalJobs = (data?.jobStatusDistribution || []).reduce((s: number, j: any) => s + j.value, 0);
+  const statusColorMap: Record<string, string> = {
+    Completed: "bg-green-100 text-green-700",
+    "In Progress": "bg-blue-100 text-blue-700",
+    Pending: "bg-yellow-100 text-yellow-700",
+    Cancelled: "bg-red-100 text-red-700",
+  };
+  const jobStatusRows = (data?.jobStatusDistribution || [])
+    .sort((a: any, b: any) => b.value - a.value)
+    .map((j: any) => ({
+      status: (
+        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${statusColorMap[j.name] || "bg-muted text-muted-foreground"}`}>
+          {j.name}
+        </span>
+      ),
+      count: <span className="font-semibold">{j.value}</span>,
+      share: (
+        <div className="flex items-center gap-2">
+          <div className="w-24 bg-muted rounded-full h-1.5 overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full"
+              style={{ width: `${totalJobs > 0 ? (j.value / totalJobs) * 100 : 0}%` }}
+            />
+          </div>
+          <span className="text-xs text-muted-foreground">
+            {totalJobs > 0 ? ((j.value / totalJobs) * 100).toFixed(1) : 0}%
+          </span>
+        </div>
+      ),
+    }));
+
+  // Technician rows
+  const techRows = (data?.topTechnicians || []).map((t: any, i: number) => ({
+    rank: <span className="font-bold text-muted-foreground">#{i + 1}</span>,
+    name: <span className="font-medium">{t.name}</span>,
+    jobs: <Badge variant="secondary">{t.jobCount} item{t.jobCount !== 1 ? "s" : ""}</Badge>,
+    revenue: <span className="font-semibold text-green-600">{formatCurrency(t.revenue)}</span>,
+    avg: <span className="text-muted-foreground">{formatCurrency(t.jobCount > 0 ? t.revenue / t.jobCount : 0)}</span>,
+  }));
+
+  // Monthly revenue rows
+  const monthlyRows = (data?.monthlyRevenue || []).map((m: any) => ({
+    month: <span className="font-medium">{m.name}</span>,
+    revenue: <span className="font-semibold text-green-600">{formatCurrency(m.value)}</span>,
+  }));
 
   return (
     <Layout>
@@ -152,246 +283,183 @@ export default function AnalyticsPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Business insights — services, PPF, accessories & revenue
+            Detailed business insights — services, PPF, accessories &amp; revenue
           </p>
         </div>
 
-        {/* Summary Stats */}
+        {/* Summary Cards */}
         {isLoading ? (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[...Array(4)].map((_, i) => (
-              <Skeleton key={i} className="h-24 rounded-xl" />
-            ))}
+            {[...Array(4)].map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
+            <SummaryCard
               icon={IndianRupee}
               label="Total Revenue"
-              value={formatCurrency(data?.summary?.totalRevenue || 0)}
+              value={formatCurrency(summary.totalRevenue || 0)}
               sub="from all invoices"
               color="bg-green-600"
             />
-            <StatCard
+            <SummaryCard
               icon={ClipboardList}
               label="Total Job Cards"
-              value={String(data?.summary?.totalJobs || 0)}
-              sub={`${data?.summary?.completedJobs || 0} completed`}
+              value={String(summary.totalJobs || 0)}
+              sub={`${summary.completedJobs || 0} completed (${completionRate}%)`}
               color="bg-blue-600"
             />
-            <StatCard
+            <SummaryCard
               icon={Receipt}
               label="Total Invoices"
-              value={String(data?.summary?.totalInvoices || 0)}
-              sub={`${data?.summary?.paidInvoices || 0} paid`}
+              value={String(summary.totalInvoices || 0)}
+              sub={`${summary.paidInvoices || 0} paid (${paidRate}%)`}
               color="bg-primary"
             />
-            <StatCard
+            <SummaryCard
               icon={CheckCircle2}
               label="Completion Rate"
-              value={
-                data?.summary?.totalJobs
-                  ? `${Math.round((data.summary.completedJobs / data.summary.totalJobs) * 100)}%`
-                  : "0%"
-              }
-              sub="jobs completed"
+              value={`${completionRate}%`}
+              sub={`${summary.completedJobs || 0} of ${summary.totalJobs || 0} jobs`}
               color="bg-purple-600"
             />
           </div>
         )}
 
-        {/* Monthly Revenue Trend */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <TrendingUp className="h-4 w-4 text-primary" />
-              Monthly Revenue Trend
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-              <Skeleton className="h-52 w-full" />
-            ) : data?.monthlyRevenue?.length > 0 ? (
-              <ResponsiveContainer width="100%" height={220}>
-                <LineChart data={data.monthlyRevenue} margin={{ top: 5, right: 10, bottom: 5, left: 10 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                  <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Line
-                    type="monotone"
-                    dataKey="value"
-                    name="revenue"
-                    stroke="#e53e3e"
-                    strokeWidth={2.5}
-                    dot={{ r: 4, fill: "#e53e3e" }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <p className="text-sm text-muted-foreground py-8 text-center">No revenue data yet</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Revenue & Job Status Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Revenue by Category */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Revenue by Category</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-52 w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <PieChart>
-                    <Pie
-                      data={data?.revenueByCategory?.filter((d: any) => d.value > 0)}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={55}
-                      outerRadius={85}
-                      dataKey="value"
-                      nameKey="name"
-                      paddingAngle={3}
-                    >
-                      {(data?.revenueByCategory || []).map((_: any, index: number) => (
-                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(val: number) => formatCurrency(val)} />
-                    <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "12px" }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Job Status Distribution */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Job Status Distribution</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <Skeleton className="h-52 w-full" />
-              ) : (
-                <ResponsiveContainer width="100%" height={220}>
-                  <BarChart
-                    data={data?.jobStatusDistribution || []}
-                    margin={{ top: 5, right: 10, bottom: 5, left: 10 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="value" name="Jobs" radius={[4, 4, 0, 0]}>
-                      {(data?.jobStatusDistribution || []).map((_: any, index: number) => (
-                        <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Revenue by Business */}
-        {!isLoading && data?.revenueByBusiness?.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Revenue by Business</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={180}>
-                <BarChart
-                  data={data.revenueByBusiness}
-                  layout="vertical"
-                  margin={{ top: 5, right: 30, bottom: 5, left: 60 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" horizontal={false} />
-                  <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
-                  <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={80} />
-                  <Tooltip formatter={(val: number) => formatCurrency(val)} />
-                  <Bar dataKey="value" name="Revenue" fill="#e53e3e" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Top Services & PPF */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Revenue Breakdown + Job Status side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {isLoading ? (
             <>
-              <Skeleton className="h-72 rounded-xl" />
-              <Skeleton className="h-72 rounded-xl" />
+              <TableSkeleton />
+              <TableSkeleton />
+              <TableSkeleton />
             </>
           ) : (
             <>
-              <TopItemsTable
-                title="Most Sold Services"
-                items={data?.topServices || []}
-                icon={Wrench}
+              <SectionTable
+                title="Revenue by Category"
+                icon={TrendingUp}
+                columns={[
+                  { key: "category", label: "Category" },
+                  { key: "revenue", label: "Revenue", align: "right" },
+                  { key: "share", label: "Share", align: "right" },
+                ]}
+                rows={categoryRows}
               />
-              <TopItemsTable
-                title="Most Sold PPF"
-                items={data?.topPPFs || []}
-                icon={ShieldCheck}
+              <SectionTable
+                title="Revenue by Business"
+                icon={Building2}
+                columns={[
+                  { key: "business", label: "Business" },
+                  { key: "revenue", label: "Revenue", align: "right" },
+                  { key: "share", label: "Share", align: "right" },
+                ]}
+                rows={businessRows}
+              />
+              <SectionTable
+                title="Job Status Breakdown"
+                icon={ClipboardList}
+                columns={[
+                  { key: "status", label: "Status" },
+                  { key: "count", label: "Count", align: "right" },
+                  { key: "share", label: "Share", align: "right" },
+                ]}
+                rows={jobStatusRows}
               />
             </>
           )}
         </div>
 
-        {/* Top Accessories */}
+        {/* Services & PPF side by side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {isLoading ? (
+            <>
+              <TableSkeleton />
+              <TableSkeleton />
+            </>
+          ) : (
+            <>
+              <SectionTable
+                title="Most Sold Services"
+                icon={Wrench}
+                columns={[
+                  { key: "rank", label: "#", align: "center" },
+                  { key: "name", label: "Service Name" },
+                  { key: "count", label: "Jobs", align: "center" },
+                  { key: "revenue", label: "Total Revenue", align: "right" },
+                  { key: "avg", label: "Avg / Job", align: "right" },
+                ]}
+                rows={serviceRows}
+                emptyMsg="No services recorded yet"
+              />
+              <SectionTable
+                title="Most Sold PPF"
+                icon={ShieldCheck}
+                columns={[
+                  { key: "rank", label: "#", align: "center" },
+                  { key: "name", label: "PPF Name" },
+                  { key: "count", label: "Jobs", align: "center" },
+                  { key: "revenue", label: "Total Revenue", align: "right" },
+                  { key: "avg", label: "Avg / Job", align: "right" },
+                ]}
+                rows={ppfRows}
+                emptyMsg="No PPF recorded yet"
+              />
+            </>
+          )}
+        </div>
+
+        {/* Accessories */}
         {isLoading ? (
-          <Skeleton className="h-72 rounded-xl" />
+          <TableSkeleton />
         ) : (
-          <TopItemsTable
+          <SectionTable
             title="Most Sold Accessories"
-            items={data?.topAccessories || []}
             icon={Package}
+            columns={[
+              { key: "rank", label: "#", align: "center" },
+              { key: "name", label: "Accessory Name" },
+              { key: "category", label: "Category" },
+              { key: "qty", label: "Qty Sold", align: "center" },
+              { key: "revenue", label: "Total Revenue", align: "right" },
+            ]}
+            rows={accessoryRows}
+            emptyMsg="No accessories recorded yet"
           />
         )}
 
-        {/* Top Technicians */}
-        {!isLoading && data?.topTechnicians?.length > 0 && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Users className="h-4 w-4 text-primary" />
-                Top Technicians by Revenue
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart
-                  data={data.topTechnicians}
-                  margin={{ top: 5, right: 10, bottom: 30, left: 10 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-                  <XAxis
-                    dataKey="name"
-                    tick={{ fontSize: 11 }}
-                    angle={-25}
-                    textAnchor="end"
-                    interval={0}
-                  />
-                  <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(val: number, name: string) =>
-                      name === "revenue" ? [formatCurrency(val), "Revenue"] : [val, "Jobs"]
-                    }
-                  />
-                  <Bar dataKey="revenue" name="revenue" fill="#3182ce" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {/* Technicians */}
+        {isLoading ? (
+          <TableSkeleton />
+        ) : (
+          <SectionTable
+            title="Top Technicians by Revenue"
+            icon={Users}
+            columns={[
+              { key: "rank", label: "#", align: "center" },
+              { key: "name", label: "Technician" },
+              { key: "jobs", label: "Items Done", align: "center" },
+              { key: "revenue", label: "Total Revenue", align: "right" },
+              { key: "avg", label: "Avg / Item", align: "right" },
+            ]}
+            rows={techRows}
+            emptyMsg="No technician data available"
+          />
+        )}
+
+        {/* Monthly Revenue */}
+        {isLoading ? (
+          <TableSkeleton />
+        ) : (
+          <SectionTable
+            title="Monthly Revenue"
+            icon={Calendar}
+            columns={[
+              { key: "month", label: "Month" },
+              { key: "revenue", label: "Revenue", align: "right" },
+            ]}
+            rows={monthlyRows}
+            emptyMsg="No monthly revenue data yet"
+          />
         )}
       </div>
     </Layout>
