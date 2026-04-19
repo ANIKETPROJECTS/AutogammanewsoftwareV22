@@ -996,13 +996,14 @@ export class MongoStorage implements IStorage {
         }
 
         const subtotalAfterDiscount = itemsSubtotal - discountAmount;
-        const gstRate = j.gst || 18;
+        // AGNX invoices always have 0 GST; only Auto Gamma invoices use the job card GST setting
+        const gstRate = biz === "AGNX" ? 0 : (j.gst || 18);
         
         // Accurate inclusive GST calculation: Total = Base + (Base * Rate/100)
         // Base = Total / (1 + Rate/100)
         // GST = Total - Base
-        const basePrice = subtotalAfterDiscount / (1 + gstRate / 100);
-        const gstAmount = subtotalAfterDiscount - basePrice;
+        const basePrice = gstRate > 0 ? subtotalAfterDiscount / (1 + gstRate / 100) : subtotalAfterDiscount;
+        const gstAmount = gstRate > 0 ? subtotalAfterDiscount - basePrice : 0;
         const totalAmount = subtotalAfterDiscount;
 
         const bizPrefix = biz === "Auto Gamma" ? "AG" : "AGNX";
@@ -1046,7 +1047,7 @@ export class MongoStorage implements IStorage {
           subtotal: itemsSubtotal,
           discount: discountAmount,
           laborCharge: bizLaborCharge,
-          gstPercentage: j.gst,
+          gstPercentage: gstRate,
           gstAmount,
           totalAmount,
           date: j.date,
@@ -1405,13 +1406,14 @@ export class MongoStorage implements IStorage {
         }
 
         const subtotalAfterDiscount = itemsSubtotal - discountAmount;
-        const gstRate = j.gst || 18;
+        // AGNX invoices always have 0 GST; only Auto Gamma invoices use the job card GST setting
+        const gstRate = biz === "AGNX" ? 0 : (j.gst || 18);
         
         // Accurate inclusive GST calculation: Total = Base + (Base * Rate/100)
         // Base = Total / (1 + Rate/100)
         // GST = Total - Base
-        const basePrice = subtotalAfterDiscount / (1 + gstRate / 100);
-        const gstAmount = subtotalAfterDiscount - basePrice;
+        const basePrice = gstRate > 0 ? subtotalAfterDiscount / (1 + gstRate / 100) : subtotalAfterDiscount;
+        const gstAmount = gstRate > 0 ? subtotalAfterDiscount - basePrice : 0;
         const totalAmount = subtotalAfterDiscount;
         
         if (existingInvoice) {
@@ -1614,7 +1616,7 @@ export class MongoStorage implements IStorage {
             subtotal: itemsSubtotal,
             discount: discountAmount,
             laborCharge: bizLaborCharge,
-            gstPercentage: j.gst,
+            gstPercentage: gstRate,
             gstAmount,
             totalAmount,
             date: j.date,

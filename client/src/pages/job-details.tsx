@@ -131,9 +131,10 @@ export default function JobDetailsPage() {
 
         const businessLabor = job.laborBusiness === business ? Number(job.laborCharge || 0) : 0;
         
-        const gstPercentage = Number(job.gst || 0);
+        // AGNX invoices always have 0 GST; only Auto Gamma invoices use the job card GST setting
+        const gstPercentage = business === "AGNX" ? 0 : Number(job.gst || 0);
         const totalBeforeGst = subtotal + businessLabor - businessDiscount;
-        const gstAmount = (totalBeforeGst * gstPercentage) / 100;
+        const gstAmount = gstPercentage > 0 ? (totalBeforeGst / (1 + gstPercentage / 100)) * (gstPercentage / 100) : 0;
 
         // For split invoices (multiple businesses), each invoice should only show
         // a payment equal to its own Grand Total (= subtotal - discount = totalBeforeGst),
